@@ -142,7 +142,7 @@ const Navdata = () => {
     },
     {
       id: "UTILITY-USAGES",
-      label: "Utility Usage",
+      label: "Utility Types",
       icon: "ri-flashlight-line",
       link: "/utility-usages",
     },

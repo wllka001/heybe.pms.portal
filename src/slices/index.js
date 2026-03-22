@@ -18,6 +18,7 @@ import LeasesReducer from "./leases/reducer";
 import MaintenanceReducer from "./maintenance/reducer";
 import EmployeesReducer from "./employees/reducer";
 import UtilityUsagesReducer from "./utilityUsages/reducer";
+import FinanceReducer from "./finance/reducer";
 
 const rootReducer = combineReducers({
     Layout: LayoutReducer,
@@ -34,6 +35,7 @@ const rootReducer = combineReducers({
     Maintenance: MaintenanceReducer,
     Employees: EmployeesReducer,
     UtilityUsages: UtilityUsagesReducer,
+    Finance: FinanceReducer,
 });
 
 export default rootReducer;

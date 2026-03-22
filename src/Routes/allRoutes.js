@@ -13,6 +13,10 @@ import Maintenance from "../pages/Maintenance";
 import Employees from "../pages/Employees";
 import UtilityUsages from "../pages/UtilityUsages";
 import MaintenanceVendors from "../pages/MaintenanceVendors";
+import Expenses from "../pages/Finance/Expenses";
+import Invoices from "../pages/Finance/Invoices";
+import Payments from "../pages/Finance/Payments";
+import UtilityBills from "../pages/Finance/UtilityBills";
 
 //pages
 
@@ -41,6 +45,10 @@ const authProtectedRoutes = [
   { path: "/maintenance/vendors", component: <MaintenanceVendors /> },
   { path: "/employees", component: <Employees /> },
   { path: "/utility-usages", component: <UtilityUsages /> },
+  { path: "/finance/expenses", component: <Expenses /> },
+  { path: "/finance/invoices", component: <Invoices /> },
+  { path: "/finance/payments", component: <Payments /> },
+  { path: "/finance/utility-bills", component: <UtilityBills /> },
 
 
   // Default

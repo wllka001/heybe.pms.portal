@@ -19,3 +19,4 @@ export * from "./leases/thunk";
 export * from "./maintenance/thunk";
 export * from "./employees/thunk";
 export * from "./utilityUsages/thunk";
+export * from "./finance/thunk";

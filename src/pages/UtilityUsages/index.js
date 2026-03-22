@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import DataTable from "react-data-table-component";
-import Select from "react-select";
 import {
   Badge,
   Button,
@@ -30,175 +29,204 @@ import BreadCrumb from "../../Components/Common/BreadCrumb";
 import DeleteModal from "../../Components/Common/DeleteModal";
 import Loader from "../../Components/Common/Loader";
 import {
-  createUtilityUsage as onCreateUtilityUsage,
-  deleteUtilityUsage as onDeleteUtilityUsage,
-  getLeases as onGetLeases,
-  getUtilityUsages as onGetUtilityUsages,
-  updateUtilityUsage as onUpdateUtilityUsage,
+  createUtilityUsage as onCreateUtilityType,
+  deleteUtilityUsage as onDeleteUtilityType,
+  getUtilityUsages as onGetUtilityTypes,
+  updateUtilityUsage as onUpdateUtilityType,
 } from "../../slices/thunks";
 
 const UtilityUsages = () => {
-  document.title = "Utility Usage | Apartment Management";
+  document.title = "Utility Types | Apartment Management";
   const dispatch = useDispatch();
 
   const usageSelector = createSelector(
     (state) => state.UtilityUsages,
     (s) => ({ usages: s.usages, pagination: s.pagination, loading: s.loading }),
   );
-  const leaseSelector = createSelector((state) => state.Leases, (s) => s.leases || []);
   const { usages, pagination, loading } = useSelector(usageSelector);
-  const leases = useSelector(leaseSelector);
 
   const [modal, setModal] = useState(false);
   const [deleteModal, setDeleteModal] = useState(false);
-  const [selectedUsage, setSelectedUsage] = useState(null);
+  const [selectedType, setSelectedType] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [selectedLeaseId, setSelectedLeaseId] = useState("");
+  const [search, setSearch] = useState("");
 
-  const fetchUsages = useCallback(() => {
-    const params = {
-      page: currentPage,
-      limit: 10,
-      ...(selectedLeaseId && { leaseId: selectedLeaseId }),
-    };
-    dispatch(onGetUtilityUsages({ params }));
-  }, [dispatch, currentPage, selectedLeaseId]);
-
-  useEffect(() => {
-    fetchUsages();
-  }, [fetchUsages]);
+  const fetchTypes = useCallback(() => {
+    dispatch(
+      onGetUtilityTypes({
+        params: { page: currentPage, limit: 20, ...(search && { q: search }) },
+      }),
+    );
+  }, [dispatch, currentPage, search]);
 
   useEffect(() => {
-    dispatch(onGetLeases({ params: { page: 1, limit: 200 } }));
-  }, [dispatch]);
-
-  const leaseOptions = useMemo(
-    () =>
-      leases.map((lease) => ({
-        value: lease._id,
-        label: `${lease.leaseNumber} - ${lease.unitId?.unitNumber || "Unit"}`,
-      })),
-    [leases],
-  );
+    fetchTypes();
+  }, [fetchTypes]);
 
   const formik = useFormik({
     enableReinitialize: true,
     initialValues: {
-      leaseId:
-        typeof selectedUsage?.leaseId === "object"
-          ? selectedUsage.leaseId?._id || ""
-          : selectedUsage?.leaseId || "",
-      month: selectedUsage?.month || "",
-      waterUsed: selectedUsage?.waterUsed ?? 0,
-      electricityUsed: selectedUsage?.electricityUsed ?? 0,
-      gasUsed: selectedUsage?.gasUsed ?? 0,
+      name: selectedType?.name || "",
+      code: selectedType?.code || "",
+      description: selectedType?.description || "",
+      inputConfig: {
+        hasPreviousValue: Boolean(selectedType?.inputConfig?.hasPreviousValue),
+        hasCurrentValue: Boolean(selectedType?.inputConfig?.hasCurrentValue),
+        hasRatePerUnit: Boolean(selectedType?.inputConfig?.hasRatePerUnit),
+        hasPreviousDate: Boolean(selectedType?.inputConfig?.hasPreviousDate),
+        hasCurrentDate: Boolean(selectedType?.inputConfig?.hasCurrentDate),
+        hasFixedMonthlyAmount: Boolean(selectedType?.inputConfig?.hasFixedMonthlyAmount),
+      },
+      defaults: {
+        ratePerUnit: selectedType?.defaults?.ratePerUnit ?? 0,
+        fixedMonthlyAmount: selectedType?.defaults?.fixedMonthlyAmount ?? 0,
+        taxRate: selectedType?.defaults?.taxRate ?? 0,
+        unitLabel: selectedType?.defaults?.unitLabel || "",
+      },
+      isActive: selectedType?.isActive ?? true,
     },
     validationSchema: Yup.object({
-      leaseId: Yup.string().required("Lease is required"),
-      month: Yup.string()
-        .matches(/^\d{4}-(0[1-9]|1[0-2])$/, "Month format must be YYYY-MM")
-        .required("Month is required"),
-      waterUsed: Yup.number().min(0).required("Water is required"),
-      electricityUsed: Yup.number().min(0).required("Electricity is required"),
-      gasUsed: Yup.number().min(0).required("Gas is required"),
+      name: Yup.string().required("Type name is required"),
+      code: Yup.string().required("Type code is required"),
+      defaults: Yup.object({
+        ratePerUnit: Yup.number().min(0),
+        fixedMonthlyAmount: Yup.number().min(0),
+        taxRate: Yup.number().min(0).max(100),
+      }),
     }),
     onSubmit: async (values, { setSubmitting, resetForm }) => {
       const payload = {
-        leaseId: values.leaseId,
-        month: values.month,
-        waterUsed: Number(values.waterUsed),
-        electricityUsed: Number(values.electricityUsed),
-        gasUsed: Number(values.gasUsed),
+        name: values.name.trim(),
+        code: values.code.trim(),
+        description: values.description.trim() || undefined,
+        inputConfig: values.inputConfig,
+        defaults: {
+          ratePerUnit: Number(values.defaults.ratePerUnit || 0),
+          fixedMonthlyAmount: Number(values.defaults.fixedMonthlyAmount || 0),
+          taxRate: Number(values.defaults.taxRate || 0),
+          unitLabel: values.defaults.unitLabel?.trim() || "",
+        },
+        isActive: Boolean(values.isActive),
       };
+
       try {
-        if (selectedUsage?._id) {
-          await dispatch(onUpdateUtilityUsage({ id: selectedUsage._id, data: payload }));
+        if (selectedType?._id) {
+          await dispatch(onUpdateUtilityType({ id: selectedType._id, data: payload }));
         } else {
-          await dispatch(onCreateUtilityUsage({ data: payload }));
+          await dispatch(onCreateUtilityType({ data: payload }));
         }
         setModal(false);
-        setSelectedUsage(null);
+        setSelectedType(null);
         resetForm();
-        fetchUsages();
+        fetchTypes();
       } finally {
         setSubmitting(false);
       }
     },
   });
 
-  const columns = [
-    {
-      name: "#",
-      width: "70px",
-      cell: (_row, i) => (currentPage - 1) * (pagination?.limit || 10) + i + 1,
-    },
-    {
-      name: "Lease",
-      grow: 2,
-      cell: (row) => (
-        <div>
-          <div className="fw-semibold">{row.leaseId?.leaseNumber || "-"}</div>
-          <small className="text-muted">{row.leaseId?.unitId || "-"}</small>
-        </div>
-      ),
-    },
-    { name: "Month", selector: (row) => row.month },
-    { name: "Water", selector: (row) => row.waterUsed ?? 0 },
-    { name: "Electricity", selector: (row) => row.electricityUsed ?? 0 },
-    { name: "Gas", selector: (row) => row.gasUsed ?? 0 },
-    {
-      name: "Actions",
-      cell: (row) => (
-        <div className="d-flex gap-1">
-          <Button
-            color="outline-primary"
-            size="sm"
-            className="btn-icon"
-            onClick={() => {
-              setSelectedUsage(row);
-              setModal(true);
-            }}
-          >
-            <i className="ri-pencil-line" />
-          </Button>
-          <Button
-            color="outline-danger"
-            size="sm"
-            className="btn-icon"
-            onClick={() => {
-              setSelectedUsage(row);
-              setDeleteModal(true);
-            }}
-          >
-            <i className="ri-delete-bin-line" />
-          </Button>
-        </div>
-      ),
-    },
-  ];
+  const columns = useMemo(
+    () => [
+      {
+        name: "#",
+        width: "70px",
+        cell: (_row, i) => (currentPage - 1) * (pagination?.limit || 20) + i + 1,
+      },
+      {
+        name: "Type",
+        grow: 2,
+        cell: (row) => (
+          <div>
+            <div className="fw-semibold">{row.name || "-"}</div>
+            <small className="text-muted">{row.code || "-"}</small>
+          </div>
+        ),
+      },
+      {
+        name: "Configuration",
+        grow: 3,
+        cell: (row) => {
+          const flags = [];
+          if (row.inputConfig?.hasPreviousValue) flags.push("Previous Value");
+          if (row.inputConfig?.hasCurrentValue) flags.push("Current Value");
+          if (row.inputConfig?.hasRatePerUnit) flags.push("Rate/Unit");
+          if (row.inputConfig?.hasPreviousDate) flags.push("Previous Date");
+          if (row.inputConfig?.hasCurrentDate) flags.push("Current Date");
+          if (row.inputConfig?.hasFixedMonthlyAmount) flags.push("Fixed Monthly");
+          return <small>{flags.length ? flags.join(", ") : "-"}</small>;
+        },
+      },
+      {
+        name: "Defaults",
+        grow: 2,
+        cell: (row) => (
+          <div>
+            <div>Rate: {Number(row.defaults?.ratePerUnit || 0)}</div>
+            <small className="text-muted">
+              Fixed: {Number(row.defaults?.fixedMonthlyAmount || 0)} | Tax:{" "}
+              {Number(row.defaults?.taxRate || 0)}%
+            </small>
+          </div>
+        ),
+      },
+      {
+        name: "Status",
+        cell: (row) => (
+          <Badge color={row.isActive ? "success" : "secondary"}>
+            {row.isActive ? "Active" : "Inactive"}
+          </Badge>
+        ),
+      },
+      {
+        name: "Actions",
+        cell: (row) => (
+          <div className="d-flex gap-1">
+            <Button
+              color="outline-primary"
+              size="sm"
+              className="btn-icon"
+              onClick={() => {
+                setSelectedType(row);
+                setModal(true);
+              }}
+            >
+              <i className="ri-pencil-line" />
+            </Button>
+            <Button
+              color="outline-danger"
+              size="sm"
+              className="btn-icon"
+              onClick={() => {
+                setSelectedType(row);
+                setDeleteModal(true);
+              }}
+            >
+              <i className="ri-delete-bin-line" />
+            </Button>
+          </div>
+        ),
+      },
+    ],
+    [currentPage, pagination?.limit],
+  );
 
   return (
     <div className="page-content">
       <Container fluid>
-        <BreadCrumb title="Utility Usage" pageTitle="Operations" />
+        <BreadCrumb title="Utility Types" pageTitle="Operations" />
         <Card className="mb-4">
           <CardBody>
             <Row className="g-3 align-items-end">
               <Col md={8}>
                 <FormGroup className="mb-0">
-                  <Label className="form-label">Lease</Label>
-                  <Select
-                    options={[{ value: "", label: "All Leases" }, ...leaseOptions]}
-                    value={
-                      [{ value: "", label: "All Leases" }, ...leaseOptions].find(
-                        (x) => x.value === selectedLeaseId,
-                      ) || null
-                    }
-                    onChange={(opt) => {
-                      setSelectedLeaseId(opt?.value || "");
+                  <Label className="form-label">Search</Label>
+                  <Input
+                    placeholder="Search by utility type name or code"
+                    value={search}
+                    onChange={(e) => {
+                      setSearch(e.target.value);
                       setCurrentPage(1);
                     }}
-                    classNamePrefix="select"
                   />
                 </FormGroup>
               </Col>
@@ -207,7 +235,7 @@ const UtilityUsages = () => {
                   color="primary"
                   className="w-100 mb-3"
                   onClick={() => {
-                    setSelectedLeaseId("");
+                    setSearch("");
                     setCurrentPage(1);
                   }}
                 >
@@ -221,22 +249,16 @@ const UtilityUsages = () => {
 
         <Card>
           <CardHeader className="d-flex justify-content-between align-items-center bg-light">
-            <h5 className="card-title mb-0">
-              <i className="ri-flashlight-line me-2" />
-              Utility Usage
-              <Badge color="primary" className="ms-2">
-                {pagination?.total || usages.length}
-              </Badge>
-            </h5>
+            <h5 className="card-title mb-0">Utility Type Setup</h5>
             <Button
               color="primary"
               onClick={() => {
-                setSelectedUsage(null);
+                setSelectedType(null);
                 setModal(true);
               }}
             >
               <i className="ri-add-line me-1" />
-              Entry
+              Utility Type
             </Button>
           </CardHeader>
           <CardBody>
@@ -249,7 +271,7 @@ const UtilityUsages = () => {
                 pagination
                 paginationServer
                 paginationTotalRows={pagination?.total || 0}
-                paginationPerPage={pagination?.limit || 10}
+                paginationPerPage={pagination?.limit || 20}
                 paginationDefaultPage={currentPage}
                 onChangePage={(p) => setCurrentPage(p)}
                 responsive
@@ -259,71 +281,147 @@ const UtilityUsages = () => {
         </Card>
       </Container>
 
-      <Modal isOpen={modal} toggle={() => setModal(false)} centered>
+      <Modal isOpen={modal} toggle={() => setModal(false)} centered size="lg">
         <ModalHeader toggle={() => setModal(false)} className="bg-light">
-          {selectedUsage ? "Edit Usage" : "Create Usage"}
+          {selectedType ? "Edit Utility Type" : "Create Utility Type"}
         </ModalHeader>
         <Form onSubmit={formik.handleSubmit}>
           <ModalBody>
+            <Row>
+              <Col md={6}>
+                <FormGroup>
+                  <Label className="form-label">Type Name *</Label>
+                  <Input
+                    name="name"
+                    placeholder="Enter utility type name (e.g. Water Meter)"
+                    value={formik.values.name}
+                    onChange={formik.handleChange}
+                    onBlur={formik.handleBlur}
+                    invalid={formik.touched.name && !!formik.errors.name}
+                  />
+                  <FormFeedback>{formik.errors.name}</FormFeedback>
+                </FormGroup>
+              </Col>
+              <Col md={6}>
+                <FormGroup>
+                  <Label className="form-label">Type Code *</Label>
+                  <Input
+                    name="code"
+                    placeholder="Enter utility code (e.g. WATER)"
+                    value={formik.values.code}
+                    onChange={formik.handleChange}
+                    onBlur={formik.handleBlur}
+                    invalid={formik.touched.code && !!formik.errors.code}
+                  />
+                  <FormFeedback>{formik.errors.code}</FormFeedback>
+                </FormGroup>
+              </Col>
+            </Row>
+
             <FormGroup>
-              <Label className="form-label">Lease *</Label>
-              <Select
-                options={leaseOptions}
-                value={leaseOptions.find((x) => x.value === formik.values.leaseId) || null}
-                onChange={(opt) => formik.setFieldValue("leaseId", opt?.value || "")}
-                classNamePrefix="select"
-              />
-              {formik.touched.leaseId && formik.errors.leaseId ? (
-                <div className="text-danger small mt-1">{formik.errors.leaseId}</div>
-              ) : null}
-            </FormGroup>
-            <FormGroup>
-              <Label className="form-label">Month (YYYY-MM) *</Label>
+              <Label className="form-label">Description</Label>
               <Input
-                name="month"
-                placeholder="2026-02"
-                value={formik.values.month}
+                type="textarea"
+                name="description"
+                rows="2"
+                placeholder="Enter utility type description"
+                value={formik.values.description}
                 onChange={formik.handleChange}
-                onBlur={formik.handleBlur}
-                invalid={formik.touched.month && !!formik.errors.month}
               />
-              <FormFeedback>{formik.errors.month}</FormFeedback>
             </FormGroup>
+
+            <h6 className="mb-3 mt-2">Input Requirements</h6>
+            <Row>
+              {[
+                ["hasPreviousValue", "Has Previous Value"],
+                ["hasCurrentValue", "Has Current Value"],
+                ["hasRatePerUnit", "Has Rate Per Unit"],
+                ["hasPreviousDate", "Has Previous Date"],
+                ["hasCurrentDate", "Has Current Date"],
+                ["hasFixedMonthlyAmount", "Has Fixed Monthly Amount"],
+              ].map(([key, label]) => (
+                <Col md={4} key={key}>
+                  <FormGroup check className="mb-2">
+                    <Input
+                      id={key}
+                      type="checkbox"
+                      checked={Boolean(formik.values.inputConfig[key])}
+                      onChange={(e) => formik.setFieldValue(`inputConfig.${key}`, e.target.checked)}
+                    />
+                    <Label for={key} check>
+                      {label}
+                    </Label>
+                  </FormGroup>
+                </Col>
+              ))}
+            </Row>
+
+            <h6 className="mb-3 mt-2">Default Values</h6>
             <Row>
               <Col md={4}>
                 <FormGroup>
-                  <Label className="form-label">Water Used *</Label>
+                  <Label className="form-label">Default Rate/Unit</Label>
                   <Input
                     type="number"
                     min="0"
-                    name="waterUsed"
-                    value={formik.values.waterUsed}
+                    name="defaults.ratePerUnit"
+                    placeholder="Enter default rate"
+                    value={formik.values.defaults.ratePerUnit}
                     onChange={formik.handleChange}
                   />
                 </FormGroup>
               </Col>
               <Col md={4}>
                 <FormGroup>
-                  <Label className="form-label">Electricity Used *</Label>
+                  <Label className="form-label">Default Fixed Monthly</Label>
                   <Input
                     type="number"
                     min="0"
-                    name="electricityUsed"
-                    value={formik.values.electricityUsed}
+                    name="defaults.fixedMonthlyAmount"
+                    placeholder="Enter fixed monthly amount"
+                    value={formik.values.defaults.fixedMonthlyAmount}
                     onChange={formik.handleChange}
                   />
                 </FormGroup>
               </Col>
               <Col md={4}>
-                <FormGroup className="mb-0">
-                  <Label className="form-label">Gas Used *</Label>
+                <FormGroup>
+                  <Label className="form-label">Default Tax %</Label>
                   <Input
                     type="number"
                     min="0"
-                    name="gasUsed"
-                    value={formik.values.gasUsed}
+                    max="100"
+                    name="defaults.taxRate"
+                    placeholder="Enter default tax percent"
+                    value={formik.values.defaults.taxRate}
                     onChange={formik.handleChange}
                   />
+                </FormGroup>
+              </Col>
+            </Row>
+            <Row>
+              <Col md={8}>
+                <FormGroup className="mb-0">
+                  <Label className="form-label">Unit Label</Label>
+                  <Input
+                    name="defaults.unitLabel"
+                    placeholder="Enter unit label (e.g. m3, kWh)"
+                    value={formik.values.defaults.unitLabel}
+                    onChange={formik.handleChange}
+                  />
+                </FormGroup>
+              </Col>
+              <Col md={4}>
+                <FormGroup check className="mt-4">
+                  <Input
+                    id="isActive"
+                    type="checkbox"
+                    checked={Boolean(formik.values.isActive)}
+                    onChange={(e) => formik.setFieldValue("isActive", e.target.checked)}
+                  />
+                  <Label for="isActive" check>
+                    Active
+                  </Label>
                 </FormGroup>
               </Col>
             </Row>
@@ -338,10 +436,10 @@ const UtilityUsages = () => {
                   <Spinner size="sm" className="me-2" />
                   Saving...
                 </>
-              ) : selectedUsage ? (
-                "Update Usage"
+              ) : selectedType ? (
+                "Update Type"
               ) : (
-                "Create Usage"
+                "Create Type"
               )}
             </Button>
           </ModalFooter>
@@ -351,16 +449,16 @@ const UtilityUsages = () => {
       <DeleteModal
         show={deleteModal}
         onDeleteClick={async () => {
-          if (!selectedUsage?._id) return;
-          await dispatch(onDeleteUtilityUsage({ id: selectedUsage._id }));
+          if (!selectedType?._id) return;
+          await dispatch(onDeleteUtilityType({ id: selectedType._id }));
           setDeleteModal(false);
-          setSelectedUsage(null);
-          fetchUsages();
+          setSelectedType(null);
+          fetchTypes();
         }}
         onCloseClick={() => setDeleteModal(false)}
         confirmationText={
-          selectedUsage
-            ? `Are you sure you want to delete utility usage "${selectedUsage.month}"?`
+          selectedType
+            ? `Are you sure you want to delete utility type "${selectedType.name}"?`
             : ""
         }
       />
@@ -370,4 +468,3 @@ const UtilityUsages = () => {
 };
 
 export default UtilityUsages;
-

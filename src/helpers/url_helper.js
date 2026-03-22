@@ -13,7 +13,8 @@ export const TENANTS = "/tenants";
 export const LEASES = "/leases";
 export const MAINTENANCE = "/maintenance";
 export const EMPLOYEES = "/employees";
-export const UTILITY_USAGES = "/utility-usages";
+export const UTILITY_TYPES = "/utility-types";
+export const FINANCE = "/finance";
 
 
 // ================================== END OF  URL ===================================================

@@ -83,6 +83,7 @@ const Employees = () => {
   const buildings = useSelector(buildingSelector);
 
   const [modal, setModal] = useState(false);
+  const [viewModal, setViewModal] = useState(false);
   const [deleteModal, setDeleteModal] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [search, setSearch] = useState("");
@@ -276,6 +277,17 @@ const Employees = () => {
       cell: (row) => (
         <div className="d-flex gap-1">
           <Button
+            color="outline-info"
+            size="sm"
+            className="btn-icon"
+            onClick={() => {
+              setSelectedEmployee(row);
+              setViewModal(true);
+            }}
+          >
+            <i className="ri-eye-line" />
+          </Button>
+          <Button
             color="outline-primary"
             size="sm"
             className="btn-icon"
@@ -403,6 +415,7 @@ const Employees = () => {
                   <Label className="form-label">Employee Code *</Label>
                   <Input
                     name="employeeCode"
+                    placeholder="Enter employee code (e.g. EMP-001)"
                     value={formik.values.employeeCode}
                     onChange={formik.handleChange}
                     onBlur={formik.handleBlur}
@@ -416,6 +429,7 @@ const Employees = () => {
                   <Label className="form-label">Primary Building</Label>
                   <Select
                     options={buildingOptions}
+                    placeholder="Select primary building"
                     value={buildingOptions.find((x) => x.value === formik.values.primaryBuildingId) || null}
                     onChange={(opt) =>
                       formik.setFieldValue("primaryBuildingId", opt?.value || "")
@@ -432,6 +446,7 @@ const Employees = () => {
                   <Label className="form-label">First Name *</Label>
                   <Input
                     name="personalInfo.firstName"
+                    placeholder="Enter first name"
                     value={formik.values.personalInfo.firstName}
                     onChange={formik.handleChange}
                     onBlur={formik.handleBlur}
@@ -448,6 +463,7 @@ const Employees = () => {
                   <Label className="form-label">Last Name *</Label>
                   <Input
                     name="personalInfo.lastName"
+                    placeholder="Enter last name"
                     value={formik.values.personalInfo.lastName}
                     onChange={formik.handleChange}
                     onBlur={formik.handleBlur}
@@ -466,6 +482,7 @@ const Employees = () => {
                   <Label className="form-label">ID Number *</Label>
                   <Input
                     name="personalInfo.idNumber"
+                    placeholder="Enter ID number"
                     value={formik.values.personalInfo.idNumber}
                     onChange={formik.handleChange}
                     onBlur={formik.handleBlur}
@@ -482,6 +499,7 @@ const Employees = () => {
                   <Label className="form-label">Primary Phone *</Label>
                   <Input
                     name="contact.primaryPhone"
+                    placeholder="Enter primary phone number"
                     value={formik.values.contact.primaryPhone}
                     onChange={formik.handleChange}
                     onBlur={formik.handleBlur}
@@ -499,6 +517,7 @@ const Employees = () => {
               <Input
                 name="contact.email"
                 type="email"
+                placeholder="Enter email address"
                 value={formik.values.contact.email}
                 onChange={formik.handleChange}
                 onBlur={formik.handleBlur}
@@ -512,6 +531,7 @@ const Employees = () => {
                   <Label className="form-label">Position *</Label>
                   <Input
                     name="employment.position"
+                    placeholder="Enter job position"
                     value={formik.values.employment.position}
                     onChange={formik.handleChange}
                     onBlur={formik.handleBlur}
@@ -547,6 +567,7 @@ const Employees = () => {
                   <Label className="form-label">Department</Label>
                   <Select
                     options={departmentOptions}
+                    placeholder="Select department"
                     value={
                       departmentOptions.find(
                         (x) => x.value === formik.values.employment.department,
@@ -564,6 +585,7 @@ const Employees = () => {
                   <Label className="form-label">Role</Label>
                   <Select
                     options={roleOptions}
+                    placeholder="Select role"
                     value={
                       roleOptions.find((x) => x.value === formik.values.employment.role) ||
                       null
@@ -582,6 +604,7 @@ const Employees = () => {
                     name="salary.amount"
                     type="number"
                     min="0"
+                    placeholder="Enter salary amount"
                     value={formik.values.salary.amount}
                     onChange={formik.handleChange}
                     onBlur={formik.handleBlur}
@@ -625,6 +648,84 @@ const Employees = () => {
             </Button>
           </ModalFooter>
         </Form>
+      </Modal>
+
+      <Modal isOpen={viewModal} toggle={() => setViewModal(false)} centered size="lg">
+        <ModalHeader toggle={() => setViewModal(false)} className="bg-light">
+          Employee Details
+        </ModalHeader>
+        <ModalBody>
+          <Row className="g-3">
+            <Col md={6}>
+              <Label className="form-label text-muted mb-1">Employee Code</Label>
+              <div className="fw-semibold">{selectedEmployee?.employeeCode || "-"}</div>
+            </Col>
+            <Col md={6}>
+              <Label className="form-label text-muted mb-1">Primary Building</Label>
+              <div className="fw-semibold">
+                {selectedEmployee?.primaryBuildingId?.name || "-"}
+              </div>
+            </Col>
+            <Col md={6}>
+              <Label className="form-label text-muted mb-1">First Name</Label>
+              <div className="fw-semibold">{selectedEmployee?.personalInfo?.firstName || "-"}</div>
+            </Col>
+            <Col md={6}>
+              <Label className="form-label text-muted mb-1">Last Name</Label>
+              <div className="fw-semibold">{selectedEmployee?.personalInfo?.lastName || "-"}</div>
+            </Col>
+            <Col md={6}>
+              <Label className="form-label text-muted mb-1">ID Number</Label>
+              <div className="fw-semibold">{selectedEmployee?.personalInfo?.idNumber || "-"}</div>
+            </Col>
+            <Col md={6}>
+              <Label className="form-label text-muted mb-1">Primary Phone</Label>
+              <div className="fw-semibold">{selectedEmployee?.contact?.primaryPhone || "-"}</div>
+            </Col>
+            <Col md={6}>
+              <Label className="form-label text-muted mb-1">Email</Label>
+              <div className="fw-semibold">{selectedEmployee?.contact?.email || "-"}</div>
+            </Col>
+            <Col md={6}>
+              <Label className="form-label text-muted mb-1">Position</Label>
+              <div className="fw-semibold">{selectedEmployee?.employment?.position || "-"}</div>
+            </Col>
+            <Col md={6}>
+              <Label className="form-label text-muted mb-1">Department</Label>
+              <div className="fw-semibold text-capitalize">
+                {selectedEmployee?.employment?.department || "-"}
+              </div>
+            </Col>
+            <Col md={6}>
+              <Label className="form-label text-muted mb-1">Role</Label>
+              <div className="fw-semibold text-capitalize">
+                {selectedEmployee?.employment?.role || "-"}
+              </div>
+            </Col>
+            <Col md={6}>
+              <Label className="form-label text-muted mb-1">Start Date</Label>
+              <div className="fw-semibold">
+                {selectedEmployee?.employment?.startDate
+                  ? new Date(selectedEmployee.employment.startDate).toLocaleDateString()
+                  : "-"}
+              </div>
+            </Col>
+            <Col md={6}>
+              <Label className="form-label text-muted mb-1">Salary</Label>
+              <div className="fw-semibold">
+                ${Number(selectedEmployee?.salary?.amount || 0).toLocaleString()}{" "}
+                <span className="text-capitalize text-muted">
+                  ({selectedEmployee?.salary?.frequency || "monthly"})
+                </span>
+              </div>
+            </Col>
+          </Row>
+        </ModalBody>
+        <ModalFooter className="bg-light">
+          <Button color="light" onClick={() => setViewModal(false)}>
+            Close
+          </Button>
+        </ModalFooter>
       </Modal>
 
       <DeleteModal

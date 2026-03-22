@@ -130,11 +130,37 @@ export const EmployeesAPI = {
 };
 
 export const UtilityUsagesAPI = {
-  list: (params) => api.get(url.UTILITY_USAGES, params),
-  get: (id) => api.get(`${url.UTILITY_USAGES}/${id}`),
-  create: (payload) => api.post(url.UTILITY_USAGES, payload),
-  update: (id, payload) => api.patch(`${url.UTILITY_USAGES}/${id}`, payload),
-  delete: (id) => api.delete(`${url.UTILITY_USAGES}/${id}`),
+  list: (params) => api.get(url.UTILITY_TYPES, params),
+  get: (id) => api.get(`${url.UTILITY_TYPES}/${id}`),
+  create: (payload) => api.post(url.UTILITY_TYPES, payload),
+  update: (id, payload) => api.patch(`${url.UTILITY_TYPES}/${id}`, payload),
+  delete: (id) => api.delete(`${url.UTILITY_TYPES}/${id}`),
+};
+
+export const FinanceAPI = {
+  generateInvoices: (payload) => api.post(`${url.FINANCE}/invoices/generate`, payload),
+  listInvoices: (params) => api.get(`${url.FINANCE}/invoices`, params),
+  createInvoice: (payload) => api.post(`${url.FINANCE}/invoices`, payload),
+  getInvoice: (id) => api.get(`${url.FINANCE}/invoices/${id}`),
+  invoicePdf: (id) => api.get(`${url.FINANCE}/invoices/${id}/pdf`),
+  sendInvoiceReminder: (id) => api.post(`${url.FINANCE}/invoices/${id}/reminder`, {}),
+  listPayments: (params) => api.get(`${url.FINANCE}/payments`, params),
+  createPayment: (payload) => api.post(`${url.FINANCE}/payments`, payload),
+  getPayment: (id) => api.get(`${url.FINANCE}/payments/${id}`),
+  verifyPayment: (id, payload) => api.post(`${url.FINANCE}/payments/${id}/verify`, payload),
+  reconcilePayment: (id) => api.post(`${url.FINANCE}/payments/${id}/reconcile`, {}),
+  reversePayment: (id, payload) => api.post(`${url.FINANCE}/payments/${id}/reverse`, payload),
+  paymentReceipt: (id) => api.get(`${url.FINANCE}/payments/${id}/receipt`),
+  listReadings: (params) => api.get(`${url.FINANCE}/readings`, params),
+  createReading: (payload) => api.post(`${url.FINANCE}/readings`, payload),
+  createReadingsBulk: (payload) => api.post(`${url.FINANCE}/readings/bulk`, payload),
+  listUnbilledReadings: () => api.get(`${url.FINANCE}/readings/unbilled`),
+  listExpenses: (params) => api.get(`${url.FINANCE}/expenses`, params),
+  createExpense: (payload) => api.post(`${url.FINANCE}/expenses`, payload),
+  getExpense: (id) => api.get(`${url.FINANCE}/expenses/${id}`),
+  updateExpense: (id, payload) => api.patch(`${url.FINANCE}/expenses/${id}`, payload),
+  approveExpense: (id, payload) => api.post(`${url.FINANCE}/expenses/${id}/approve`, payload),
+  reportSummary: (payload) => api.post(`${url.FINANCE}/reports/summary`, payload),
 };
 
 
