@@ -11,6 +11,15 @@ import Tenants from "../pages/Tenants";
 import Leases from "../pages/Leases";
 import Maintenance from "../pages/Maintenance";
 import Employees from "../pages/Employees";
+import Reports from "../pages/Reports";
+import ExpenseReport from "../pages/Reports/Expenses";
+import GeneralFinanceReport from "../pages/Reports/Gen_Finance";
+import InvoiceReport from "../pages/Reports/Invoices";
+import PaymentReport from "../pages/Reports/payments";
+import TenantBalanceReport from "../pages/Reports/Tenant_Balance";
+import TenantInvoiceHistoryReport from "../pages/Reports/Tenant_Invoices_History";
+import UtilityBillsReport from "../pages/Reports/Utility_Bills";
+
 import UtilityUsages from "../pages/UtilityUsages";
 import MaintenanceVendors from "../pages/MaintenanceVendors";
 import Expenses from "../pages/Finance/Expenses";
@@ -44,6 +53,15 @@ const authProtectedRoutes = [
   { path: "/maintenance", component: <Maintenance /> },
   { path: "/maintenance/vendors", component: <MaintenanceVendors /> },
   { path: "/employees", component: <Employees /> },
+  { path: "/reports", component: <Reports /> },
+  { path: "/reports/utility-bills-report", component: <UtilityBillsReport /> },
+  { path: "/reports/invoice-report", component: <InvoiceReport /> },
+  { path: "/reports/payment-report", component: <PaymentReport /> },
+  { path: "/reports/expense-report", component: <ExpenseReport /> },
+  { path: "/reports/general-finance-report", component: <GeneralFinanceReport /> },
+  { path: "/reports/tenant-balance-report", component: <TenantBalanceReport /> },
+  { path: "/reports/tenant-invoice-payment-history", component: <TenantInvoiceHistoryReport /> },
+
   { path: "/utility-usages", component: <UtilityUsages /> },
   { path: "/finance/expenses", component: <Expenses /> },
   { path: "/finance/invoices", component: <Invoices /> },

@@ -158,6 +158,69 @@ const Navdata = () => {
       icon: "ri-building-line",
       link: "/buildings",
     },
+    {
+      id: "REPORTS",
+      label: "Reports",
+      icon: "ri-bar-chart-grouped-line",
+      link: "/#",
+      stateVariables: menuStates["REPORTS"] || false,
+      click: function (e) {
+        e.preventDefault();
+        setMenuStates((prev) => ({ ...prev, REPORTS: !prev.REPORTS }));
+        setIscurrentState("REPORTS");
+        updateIconSidebar(e);
+      },
+      subItems: [
+        {
+          id: "REPORTS_OVERVIEW",
+          label: "Overview",
+          link: "/reports",
+          parentId: "REPORTS",
+        },
+        {
+          id: "UTILITY_BILLS_REPORT",
+          label: "Utility Bills Report",
+          link: "/reports/utility-bills-report",
+          parentId: "REPORTS",
+        },
+        {
+          id: "INVOICE_REPORT",
+          label: "Invoice Report",
+          link: "/reports/invoice-report",
+          parentId: "REPORTS",
+        },
+        {
+          id: "PAYMENT_REPORT",
+          label: "Payment Report",
+          link: "/reports/payment-report",
+          parentId: "REPORTS",
+        },
+        {
+          id: "EXPENSE_REPORT",
+          label: "Expense Report",
+          link: "/reports/expense-report",
+          parentId: "REPORTS",
+        },
+        {
+          id: "GENERAL_FINANCE_REPORT",
+          label: "General Finance Report",
+          link: "/reports/general-finance-report",
+          parentId: "REPORTS",
+        },
+        {
+          id: "TENANT_BALANCE_REPORT",
+          label: "Tenant Balance Report",
+          link: "/reports/tenant-balance-report",
+          parentId: "REPORTS",
+        },
+        {
+          id: "TENANT_HISTORY_REPORT",
+          label: "Tenant Invoice History",
+          link: "/reports/tenant-invoice-payment-history",
+          parentId: "REPORTS",
+        },
+      ],
+    },
 
 
     {

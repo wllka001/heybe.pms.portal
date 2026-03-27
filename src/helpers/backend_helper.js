@@ -139,6 +139,7 @@ export const UtilityUsagesAPI = {
 
 export const FinanceAPI = {
   generateInvoices: (payload) => api.post(`${url.FINANCE}/invoices/generate`, payload),
+  previewInvoices: (payload) => api.post(`${url.FINANCE}/invoices/preview`, payload),
   listInvoices: (params) => api.get(`${url.FINANCE}/invoices`, params),
   createInvoice: (payload) => api.post(`${url.FINANCE}/invoices`, payload),
   getInvoice: (id) => api.get(`${url.FINANCE}/invoices/${id}`),
@@ -147,12 +148,15 @@ export const FinanceAPI = {
   listPayments: (params) => api.get(`${url.FINANCE}/payments`, params),
   createPayment: (payload) => api.post(`${url.FINANCE}/payments`, payload),
   getPayment: (id) => api.get(`${url.FINANCE}/payments/${id}`),
+  updatePayment: (id, payload) => api.patch(`${url.FINANCE}/payments/${id}`, payload),
   verifyPayment: (id, payload) => api.post(`${url.FINANCE}/payments/${id}/verify`, payload),
   reconcilePayment: (id) => api.post(`${url.FINANCE}/payments/${id}/reconcile`, {}),
+  rejectPayment: (id, payload) => api.post(`${url.FINANCE}/payments/${id}/reject`, payload),
   reversePayment: (id, payload) => api.post(`${url.FINANCE}/payments/${id}/reverse`, payload),
   paymentReceipt: (id) => api.get(`${url.FINANCE}/payments/${id}/receipt`),
   listReadings: (params) => api.get(`${url.FINANCE}/readings`, params),
   createReading: (payload) => api.post(`${url.FINANCE}/readings`, payload),
+  updateReading: (id, payload) => api.patch(`${url.FINANCE}/readings/${id}`, payload),
   createReadingsBulk: (payload) => api.post(`${url.FINANCE}/readings/bulk`, payload),
   listUnbilledReadings: () => api.get(`${url.FINANCE}/readings/unbilled`),
   listExpenses: (params) => api.get(`${url.FINANCE}/expenses`, params),
@@ -161,6 +165,17 @@ export const FinanceAPI = {
   updateExpense: (id, payload) => api.patch(`${url.FINANCE}/expenses/${id}`, payload),
   approveExpense: (id, payload) => api.post(`${url.FINANCE}/expenses/${id}/approve`, payload),
   reportSummary: (payload) => api.post(`${url.FINANCE}/reports/summary`, payload),
+  reportDetails: (payload) => api.post(`${url.FINANCE}/reports/details`, payload),
+};
+
+export const ReportsAPI = {
+  utilityBills: (payload) => api.post(`/reports/utility-bills`, payload),
+  invoices: (payload) => api.post(`/reports/invoices`, payload),
+  payments: (payload) => api.post(`/reports/payments`, payload),
+  expenses: (payload) => api.post(`/reports/expenses`, payload),
+  generalFinance: (payload) => api.post(`/reports/general-finance`, payload),
+  tenantBalances: (payload) => api.post(`/reports/tenant-balances`, payload),
+  tenantHistory: (payload) => api.post(`/reports/tenant-history`, payload),
 };
 
 
