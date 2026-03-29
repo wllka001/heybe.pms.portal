@@ -7,17 +7,23 @@ export default function useAuthUser() {
 
         try {
             const parsed = JSON.parse(stored);
-            const staff = parsed?.data?.staff || {};
-            const token = parsed?.data?.accessToken || null;
+            const sessionData = parsed?.data || parsed || {};
+            const user = sessionData?.user || sessionData?.staff || {};
+            const token = sessionData?.accessToken || parsed?.accessToken || parsed?.token || null;
+            const firstName = user?.firstName || "Admin";
+            const lastName = user?.lastName || "";
 
             return {
-                staffId: staff.staffId,
-                username: staff.username,
-                firstName: staff.firstName,
-                lastName: staff.lastName,
-                role: staff.role,
-                businessId: staff.businessId,
-                businessName: staff.businessName,
+                id: user?.id || user?._id || null,
+                email: user?.email || null,
+                username: user?.username || user?.email || null,
+                firstName,
+                lastName,
+                fullName: `${firstName} ${lastName}`.trim(),
+                role: user?.role || "Admin",
+                organizationId: user?.organizationId || null,
+                accessibleBuildings: user?.accessibleBuildings || [],
+                status: user?.status || null,
                 token,
                 raw: parsed  // full object if needed
             };

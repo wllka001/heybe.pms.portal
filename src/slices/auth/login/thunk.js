@@ -1,6 +1,4 @@
-//Include Both Helper File with needed methods
-// import { getFirebaseBackend } from "../../../helpers/firebase_helper";
-import { login } from "../../../helpers/backend_helper";
+import { login, resendLoginOtp, verifyLoginOtp } from "../../../helpers/backend_helper";
 import { setAuthorization } from "../../../helpers/api_helper";
 
 import {
@@ -14,25 +12,20 @@ import {
 export const loginUser = (user, history) => async (dispatch) => {
   try {
     dispatch(loginStart());
-    let response;
-    response = login({
+    const response = login({
       email: user.email,
       password: user.password,
     });
-    var data = await response;
+    let data = await response;
 
     if (data) {
-      sessionStorage.setItem("authUser", JSON.stringify(data));
-
-      var finallogin = JSON.stringify(data);
-      finallogin = JSON.parse(finallogin);
+      const finallogin = JSON.parse(JSON.stringify(data));
       data = finallogin.data;
-      console.log("ddd", finallogin);
+
       if (finallogin.success) {
-        const accessToken = data?.accessToken;
-        if (accessToken) {
-          setAuthorization(accessToken);
-        }
+        sessionStorage.removeItem("authUser");
+        setAuthorization(null);
+        sessionStorage.setItem("pendingLogin", JSON.stringify(data));
         dispatch(loginSuccess(data));
         history("/auth-twostep");
       } else {
@@ -44,9 +37,53 @@ export const loginUser = (user, history) => async (dispatch) => {
   }
 };
 
+export const verifyUserLoginOtp = (payload, history) => async (dispatch) => {
+  try {
+    dispatch(loginStart());
+    const response = await verifyLoginOtp(payload);
+
+    if (response?.success) {
+      sessionStorage.removeItem("pendingLogin");
+      sessionStorage.setItem("authUser", JSON.stringify(response));
+
+      const accessToken = response.data?.accessToken;
+      if (accessToken) {
+        setAuthorization(accessToken);
+      }
+
+      dispatch(loginSuccess(response.data));
+      history("/dashboard");
+    }
+  } catch (error) {
+    dispatch(apiError(error));
+  }
+};
+
+export const resendUserLoginOtp = (payload) => async (dispatch) => {
+  try {
+    dispatch(loginStart());
+    const response = await resendLoginOtp(payload);
+
+    if (response?.success) {
+      const existingPending = JSON.parse(sessionStorage.getItem("pendingLogin") || "{}");
+      sessionStorage.setItem(
+        "pendingLogin",
+        JSON.stringify({
+          ...existingPending,
+          ...response.data,
+        }),
+      );
+      dispatch(loginSuccess(response.data));
+    }
+  } catch (error) {
+    dispatch(apiError(error));
+  }
+};
+
 export const logoutUser = () => async (dispatch) => {
   try {
     sessionStorage.removeItem("authUser");
+    sessionStorage.removeItem("pendingLogin");
     localStorage.removeItem("user");
     setAuthorization(null);
     dispatch(logoutUserSuccess(true));

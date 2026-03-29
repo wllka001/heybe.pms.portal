@@ -1,4 +1,8 @@
 export const POST_LOGIN = "/auth/login";
+export const POST_VERIFY_LOGIN_OTP = "/auth/verify-login-otp";
+export const POST_RESEND_LOGIN_OTP = "/auth/resend-login-otp";
+export const POST_CHANGE_PASSWORD = "/auth/change-password";
+export const GET_AUTH_ME = "/auth/me";
 export const DASHBOARD_OVERVIEW = "/dashboard/overview";
 
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   Dropdown,
@@ -6,8 +6,7 @@ import {
   DropdownMenu,
   DropdownToggle,
 } from "reactstrap";
-import { createSelector } from "reselect";
-import { useDispatch, useSelector } from "react-redux";
+import { useDispatch } from "react-redux";
 
 //import images
 import avatar1 from "../../assets/images/heybe-logo.png";
@@ -18,31 +17,9 @@ const ProfileDropdown = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
-  const profiledropdownData = createSelector(
-    (state) => state.Profile,
-    (state) => ({
-      user: state.user,
-    }),
-  );
-  // Inside your component
-  const { user } = useSelector(profiledropdownData);
-
-  const [userName, setUserName] = useState("Admin");
-  const [userRole, setuserRole] = useState("Admin");
-
   const authUser = useAuthUser();
-
-  useEffect(() => {
-    if (sessionStorage.getItem("authUser")) {
-      const obj = JSON.parse(sessionStorage.getItem("authUser"));
-
-      const userName = obj.data.user.firstName || "Admin";
-      const userRole = obj.data.user.role || "Admin";
-
-      setUserName(userName);
-      setuserRole(userRole);
-    }
-  }, [userName, userRole, user]);
+  const userName = authUser?.fullName || authUser?.firstName || "Admin";
+  const userRole = authUser?.role || "Admin";
 
   //Dropdown Toggle
   const [isProfileDropdown, setIsProfileDropdown] = useState(false);
@@ -71,10 +48,10 @@ const ProfileDropdown = () => {
             />
             <span className="text-start ms-xl-2">
               <span className="d-none d-xl-inline-block ms-1 fw-medium user-name-text">
-                {authUser.firstName}
+                {userName}
               </span>
               <span className="d-none d-xl-block ms-1 fs-12 text-muted user-name-sub-text">
-                {authUser.role}
+                {userRole}
               </span>
             </span>
           </span>
@@ -82,7 +59,7 @@ const ProfileDropdown = () => {
         <DropdownMenu className="dropdown-menu-end">
           <h6 className="dropdown-header">Welcome {userName}!</h6>
           <DropdownItem className="p-0">
-            <Link to="/users/user-profile" className="dropdown-item">
+            <Link to="/profile" className="dropdown-item">
               <i className="mdi mdi-account-circle text-muted fs-16 align-middle me-1"></i>
               <span className="align-middle">Profile</span>
             </Link>
@@ -115,19 +92,7 @@ const ProfileDropdown = () => {
                         </Link>
                     </DropdownItem > */}
           <DropdownItem className="p-0">
-            <Link
-              to="/business/profile-settings"
-              className="dropdown-item"
-            >
-              <span className="badge bg-success-subtle text-success mt-1 float-end">
-                New
-              </span>
-              <i className="mdi mdi-cog-outline text-muted fs-16 align-middle me-1"></i>{" "}
-              <span className="align-middle">Settings</span>
-            </Link>
-          </DropdownItem>
-          <DropdownItem className="p-0">
-            <Link to="/auth-change-password" className="dropdown-item">
+            <Link to="/change-password" className="dropdown-item">
               <i className="mdi mdi-lock-outline text-muted fs-16 align-middle me-1"></i>{" "}
               <span className="align-middle">Change Password</span>
             </Link>

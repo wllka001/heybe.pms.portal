@@ -24,6 +24,10 @@ const makeCRUD = (endpoint) => ({
 
 // Auth
 export const login = (data) => api.post(url.POST_LOGIN, data);
+export const verifyLoginOtp = (data) => api.post(url.POST_VERIFY_LOGIN_OTP, data);
+export const resendLoginOtp = (data) => api.post(url.POST_RESEND_LOGIN_OTP, data);
+export const changePassword = (data) => api.post(url.POST_CHANGE_PASSWORD, data);
+export const getCurrentUserProfile = () => api.get(url.GET_AUTH_ME);
 export const getDashboardOverview = () => api.get(url.DASHBOARD_OVERVIEW);
 
 

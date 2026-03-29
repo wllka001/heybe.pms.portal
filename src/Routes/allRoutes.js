@@ -30,6 +30,7 @@ import UtilityBills from "../pages/Finance/UtilityBills";
 //pages
 import TwosVerify from "../pages/AuthenticationInner/TwoStepVerification";
 import ChangePassword from "../pages/AuthenticationInner/ChangePassword";
+import Profile from "../pages/Profile";
 import Cover404 from "../pages/AuthenticationInner/Errors/Cover404";
 import Alt404 from "../pages/AuthenticationInner/Errors/Alt404";
 import Error500 from "../pages/AuthenticationInner/Errors/Error500";
@@ -63,6 +64,8 @@ const authProtectedRoutes = [
   { path: "/finance/invoices", component: <Invoices /> },
   { path: "/finance/payments", component: <Payments /> },
   { path: "/finance/utility-bills", component: <UtilityBills /> },
+  { path: "/profile", component: <Profile /> },
+  { path: "/change-password", component: <ChangePassword /> },
 
 
   // Default
@@ -80,7 +83,6 @@ const publicRoutes = [
 
   //AuthenticationInner pages
   { path: "/auth-twostep", component: <TwosVerify /> },
-  // { path: "/auth-change-password", component: <ChangePassword /> },
   { path: "/not-found-404", component: <Cover404 /> },
   { path: "/auth-404-alt", component: <Alt404 /> },
   { path: "/auth-500", component: <Error500 /> },
