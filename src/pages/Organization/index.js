@@ -11,6 +11,7 @@ import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import BreadCrumb from "../../Components/Common/BreadCrumb";
 import Loader from "../../Components/Common/Loader";
+import { BuildingsAPI, TenantsAPI } from "../../helpers/backend_helper";
 import { useDispatch, useSelector } from 'react-redux';
 import { createSelector } from 'reselect';
 import classnames from 'classnames';
@@ -300,6 +301,7 @@ const Organization = () => {
   const [logoFile, setLogoFile] = useState(null);
   const [completionPercentage, setCompletionPercentage] = useState(0);
   const [hoveredStat, setHoveredStat] = useState(null);
+  const [entityCounts, setEntityCounts] = useState({ properties: 0, tenants: 0 });
 
 
   // Fetch organization data
@@ -317,6 +319,26 @@ const Organization = () => {
   useEffect(() => {
     fetchOrganization();
   }, [fetchOrganization]);
+
+  useEffect(() => {
+    const fetchEntityCounts = async () => {
+      try {
+        const [buildingsRes, tenantsRes] = await Promise.all([
+          BuildingsAPI.list({ page: 1, limit: 1 }),
+          TenantsAPI.list({ page: 1, limit: 1 }),
+        ]);
+
+        setEntityCounts({
+          properties: buildingsRes?.data?.meta?.total || 0,
+          tenants: tenantsRes?.data?.meta?.total || 0,
+        });
+      } catch (_error) {
+        setEntityCounts({ properties: 0, tenants: 0 });
+      }
+    };
+
+    fetchEntityCounts();
+  }, []);
 
   useEffect(() => {
     if (organizationData && organizationData.length > 0) {
@@ -516,8 +538,8 @@ const Organization = () => {
   // Stats data
   const stats = [
     { label: 'Profile Completion', value: `${completionPercentage}%`, icon: 'ri-pie-chart-2-line' },
-    { label: 'Properties', value: organization?.propertiesCount || 0, icon: 'ri-building-2-line' },
-    { label: 'Tenants', value: organization?.tenantsCount || 0, icon: 'ri-team-line' },
+    { label: 'Properties', value: entityCounts.properties || organization?.propertiesCount || 0, icon: 'ri-building-2-line' },
+    { label: 'Tenants', value: entityCounts.tenants || organization?.tenantsCount || 0, icon: 'ri-team-line' },
     { label: 'Active Since', value: organization?.createdAt ? new Date(organization.createdAt).getFullYear() : 'N/A', icon: 'ri-calendar-line' }
   ];
 

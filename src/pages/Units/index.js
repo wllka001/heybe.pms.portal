@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import DataTable from "react-data-table-component";
-import Select from "react-select";
+import DataTable from "../../Components/Common/AppDataTable";
+import Select from "../../Components/Common/AppSelect";
 import {
   Badge,
   Button,
@@ -29,9 +29,11 @@ import { useFormik } from "formik";
 import * as Yup from "yup";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { RiDeleteBinLine, RiEyeLine, RiPencilLine } from "react-icons/ri";
 import BreadCrumb from "../../Components/Common/BreadCrumb";
 import DeleteModal from "../../Components/Common/DeleteModal";
 import Loader from "../../Components/Common/Loader";
+import ActionIconButton from "../../Components/Common/ActionIconButton";
 import useAuthUser from "../../Components/Hooks/useAuthUser";
 import {
   bulkCreateUnits as onBulkCreateUnits,
@@ -437,20 +439,34 @@ const Units = () => {
     {
       name: "Actions",
       cell: (row) => (
-        <div className="d-flex gap-1">
-          <Button
-            color="info"
-            size="sm"
-            className="btn-icon"
+        <div className="d-flex gap-2">
+          <ActionIconButton
+            id={`view-unit-${row._id}`}
+            icon={<RiEyeLine size={16} />}
+            tooltip="View Unit"
             onClick={() => {
               setSelectedUnit(row);
               setViewModal(true);
             }}
-          >
-            <i className="ri-eye-line" />
-          </Button>
-          <Button color="primary" size="sm" className="btn-icon" onClick={() => { setSelectedUnit(row); setModal(true); }}><i className="ri-pencil-line" /></Button>
-          <Button color="danger" size="sm" className="btn-icon" onClick={() => { setSelectedUnit(row); setDeleteModal(true); }}><i className="ri-delete-bin-line" /></Button>
+          />
+          <ActionIconButton
+            id={`edit-unit-${row._id}`}
+            icon={<RiPencilLine size={16} />}
+            tooltip="Edit Unit"
+            onClick={() => {
+              setSelectedUnit(row);
+              setModal(true);
+            }}
+          />
+          <ActionIconButton
+            id={`delete-unit-${row._id}`}
+            icon={<RiDeleteBinLine size={16} />}
+            tooltip="Delete Unit"
+            onClick={() => {
+              setSelectedUnit(row);
+              setDeleteModal(true);
+            }}
+          />
         </div>
       ),
     },

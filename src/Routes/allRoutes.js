@@ -28,9 +28,6 @@ import Payments from "../pages/Finance/Payments";
 import UtilityBills from "../pages/Finance/UtilityBills";
 
 //pages
-
-import Packages from "../pages/Content_Management/SurplusPackages";
-
 import TwosVerify from "../pages/AuthenticationInner/TwoStepVerification";
 import ChangePassword from "../pages/AuthenticationInner/ChangePassword";
 import Cover404 from "../pages/AuthenticationInner/Errors/Cover404";
@@ -43,8 +40,7 @@ const authProtectedRoutes = [
   // Dashboard
   { path: "/dashboard", component: <Dashboard /> },
 
-  // Content
-  { path: "/content/packages", component: <Packages /> },
+  //
   { path: "/organization", component: <Organization /> },
   { path: "/buildings", component: <Buildings /> },
   { path: "/units", component: <Units /> },

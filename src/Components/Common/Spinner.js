@@ -1,19 +1,16 @@
-import React, { useEffect } from "react"
-import { Spinner } from "reactstrap";
+import React, { useEffect } from "react";
+import Loader from "./Loader";
 
 const Spinners = ({ setLoading }) => {
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setLoading(false);
+    }, 1000);
 
-    useEffect(() => {
-        setTimeout(() => {
-            setLoading(false)
-        }, 1000)
-    }, [setLoading]);
+    return () => clearTimeout(timer);
+  }, [setLoading]);
 
-    return (
-        <React.Fragment>
-            <Spinner className='position-absolute top-50 start-50' animation='border' color="primary" />
-        </React.Fragment>
-    )
-}
+  return <Loader className="position-absolute top-50 start-50 translate-middle" inline />;
+};
 
 export default Spinners;

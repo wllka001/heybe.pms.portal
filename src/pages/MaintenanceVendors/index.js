@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
-import DataTable from "react-data-table-component";
-import Select from "react-select";
+import DataTable from "../../Components/Common/AppDataTable";
+import Select from "../../Components/Common/AppSelect";
 import {
   Badge,
   Button,
@@ -26,8 +26,10 @@ import { useDispatch, useSelector } from "react-redux";
 import { useFormik } from "formik";
 import * as Yup from "yup";
 import { ToastContainer } from "react-toastify";
+import { RiPencilLine } from "react-icons/ri";
 import BreadCrumb from "../../Components/Common/BreadCrumb";
 import Loader from "../../Components/Common/Loader";
+import ActionIconButton from "../../Components/Common/ActionIconButton";
 import { createVendor as onCreateVendor, getVendors as onGetVendors, updateVendor as onUpdateVendor } from "../../slices/thunks";
 
 const categoryOptions = [
@@ -168,17 +170,15 @@ const MaintenanceVendors = () => {
       {
         name: "Actions",
         cell: (row) => (
-          <Button
-            color="outline-primary"
-            size="sm"
-            className="btn-icon"
+          <ActionIconButton
+            id={`edit-vendor-${row._id}`}
+            icon={<RiPencilLine size={16} />}
+            tooltip="Edit Vendor"
             onClick={() => {
               setSelectedVendor(row);
               setModal(true);
             }}
-          >
-            <i className="ri-pencil-line" />
-          </Button>
+          />
         ),
       },
     ],
@@ -357,4 +357,3 @@ const MaintenanceVendors = () => {
 };
 
 export default MaintenanceVendors;
-

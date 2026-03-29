@@ -5,6 +5,7 @@ import './assets/scss/themes.scss';
 
 //imoprt Route
 import Route from './Routes';
+import FormPlaceholderManager from './Components/Common/FormPlaceholderManager';
 
 // Import Firebase Configuration file
 // import { initFirebaseBackend } from "./helpers/firebase_helper";
@@ -32,6 +33,7 @@ import Route from './Routes';
 function App() {
   return (
     <React.Fragment>
+      <FormPlaceholderManager />
       <Route />
     </React.Fragment>
   );

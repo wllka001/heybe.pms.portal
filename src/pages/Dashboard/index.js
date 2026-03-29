@@ -109,24 +109,24 @@ const StatCard = ({ icon: Icon, title, value, color, subtitle, trend, trendValue
   const SafeIcon = Icon || FiActivity;
 
   return (
-  <Card className="border-0 shadow-sm h-100 hover-lift">
-    <CardBody className="p-4">
-      <div className="d-flex align-items-center justify-content-between mb-3">
-        <div className={`bg-${color} bg-opacity-10 rounded-3 p-3`}>
-          <SafeIcon size={24} className={`text-${color}`} />
+    <Card className="border-0 shadow-sm h-100 hover-lift">
+      <CardBody className="p-4">
+        <div className="d-flex align-items-center justify-content-between mb-3">
+          <div className={`bg-${color} bg-opacity-10 rounded-3 p-3`}>
+            <SafeIcon size={24} className={`text-${color}`} />
+          </div>
+          {trend && (
+            <Badge color={trend === "up" ? "success" : "danger"} className="px-2 py-1">
+              {trend === "up" ? <FiArrowUp size={12} /> : <FiArrowDown size={12} />}
+              <span className="ms-1">{trendValue}</span>
+            </Badge>
+          )}
         </div>
-        {trend && (
-          <Badge color={trend === "up" ? "success" : "danger"} className="px-2 py-1">
-            {trend === "up" ? <FiArrowUp size={12} /> : <FiArrowDown size={12} />}
-            <span className="ms-1">{trendValue}</span>
-          </Badge>
-        )}
-      </div>
-      <h3 className="mb-1 fw-bold">{value}</h3>
-      <p className="text-muted mb-0 small">{title}</p>
-      {subtitle && <small className="text-muted">{subtitle}</small>}
-    </CardBody>
-  </Card>
+        <h3 className="mb-1 fw-bold">{value}</h3>
+        <p className="text-muted mb-0 small">{title}</p>
+        {subtitle && <small className="text-muted">{subtitle}</small>}
+      </CardBody>
+    </Card>
   );
 };
 
@@ -135,22 +135,22 @@ const MetricCard = ({ title, value, change, color, icon: Icon }) => {
   const SafeIcon = Icon || FiActivity;
 
   return (
-  <Card className="border-0 shadow-sm h-100">
-    <CardBody className="p-4">
-      <div className="d-flex align-items-center justify-content-between mb-3">
-        <div className={`bg-${color} bg-opacity-10 rounded-3 p-2`}>
-          <SafeIcon size={20} className={`text-${color}`} />
+    <Card className="border-0 shadow-sm h-100">
+      <CardBody className="p-4">
+        <div className="d-flex align-items-center justify-content-between mb-3">
+          <div className={`bg-${color} bg-opacity-10 rounded-3 p-2`}>
+            <SafeIcon size={20} className={`text-${color}`} />
+          </div>
+          {change !== undefined && (
+            <Badge color={change >= 0 ? "success" : "danger"} className="px-2 py-1">
+              {change >= 0 ? "+" : ""}{change}%
+            </Badge>
+          )}
         </div>
-        {change !== undefined && (
-          <Badge color={change >= 0 ? "success" : "danger"} className="px-2 py-1">
-            {change >= 0 ? "+" : ""}{change}%
-          </Badge>
-        )}
-      </div>
-      <h4 className="mb-1 fw-bold">{value}</h4>
-      <p className="text-muted mb-0 small">{title}</p>
-    </CardBody>
-  </Card>
+        <h4 className="mb-1 fw-bold">{value}</h4>
+        <p className="text-muted mb-0 small">{title}</p>
+      </CardBody>
+    </Card>
   );
 };
 
@@ -502,7 +502,7 @@ const Dashboard = () => {
                           Invoiced vs Collected vs Expenses ({overview.currentYear})
                         </p>
                       </div>
-                      <Badge color="light" className="px-3 py-2">
+                      <Badge color="light" className="px-3 py-2 text-primary">
                         <FiCalendar size={12} className="me-1" />
                         Year to Date
                       </Badge>

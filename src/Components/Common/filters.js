@@ -1,5 +1,6 @@
 import React from 'react';
 import { Input } from 'reactstrap';
+import AppSelect from './AppSelect';
 
 export const Filter = ({ column }) => {
   return (
@@ -31,28 +32,29 @@ export const SelectColumnFilter = ({
   column: { filterValue, setFilter, preFilteredRows, id },
 }) => {
   const options = React.useMemo(() => {
-    const options = new Set();
+    const optionValues = new Set();
     preFilteredRows.forEach((row) => {
-      options.add(row.values[id]);
+      optionValues.add(row.values[id]);
     });
-    return [...options.values()];
+    return [
+      { value: '', label: 'All' },
+      ...[...optionValues.values()].map((option) => ({
+        value: option,
+        label: option,
+      })),
+    ];
   }, [id, preFilteredRows]);
 
   return (
-    <select
-      id='custom-select'
-      className="form-select"
-      value={filterValue}
-      onChange={(e) => {
-        setFilter(e.target.value || undefined);
+    <AppSelect
+      inputId="custom-select"
+      options={options}
+      value={options.find((option) => option.value === filterValue) || options[0]}
+      onChange={(option) => {
+        setFilter(option?.value || undefined);
       }}
-    >
-      <option value=''>All</option>
-      {options.map((option) => (
-        <option key={option} value={option}>
-          {option}
-        </option>
-      ))}
-    </select>
+      isSearchable={false}
+      placeholder="Filter results"
+    />
   );
 };

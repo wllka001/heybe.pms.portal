@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import DataTable from "react-data-table-component";
-import Select from "react-select";
+import DataTable from "../../Components/Common/AppDataTable";
+import Select from "../../Components/Common/AppSelect";
 import {
   Badge,
   Button,
@@ -25,10 +25,12 @@ import { createSelector } from "reselect";
 import { useDispatch, useSelector } from "react-redux";
 import { useFormik } from "formik";
 import * as Yup from "yup";
+import { RiCloseCircleLine, RiDeleteBinLine, RiEyeLine, RiPencilLine, RiShieldCheckLine } from "react-icons/ri";
 import { ToastContainer } from "react-toastify";
 import BreadCrumb from "../../Components/Common/BreadCrumb";
 import DeleteModal from "../../Components/Common/DeleteModal";
 import Loader from "../../Components/Common/Loader";
+import ActionIconButton from "../../Components/Common/ActionIconButton";
 import useAuthUser from "../../Components/Hooks/useAuthUser";
 import {
   createTenant as onCreateTenant,
@@ -254,42 +256,36 @@ const Tenants = () => {
       {
         name: "Actions",
         cell: (row) => (
-          <div className="d-flex gap-1">
-            <Button
-              color="outline-info"
-              size="sm"
-              className="btn-icon"
+          <div className="d-flex gap-2">
+            <ActionIconButton
+              id={`view-tenant-${row._id}`}
+              icon={<RiEyeLine size={16} />}
+              tooltip="View Tenant"
               onClick={async () => {
                 setSelectedTenant(row);
                 await dispatch(onGetTenantLeases({ id: row._id }));
                 await dispatch(onGetTenantDocuments({ id: row._id }));
                 setViewModal(true);
               }}
-            >
-              <i className="ri-eye-line" />
-            </Button>
-            <Button
-              color="outline-primary"
-              size="sm"
-              className="btn-icon"
+            />
+            <ActionIconButton
+              id={`edit-tenant-${row._id}`}
+              icon={<RiPencilLine size={16} />}
+              tooltip="Edit Tenant"
               onClick={() => {
                 setSelectedTenant(row);
                 setModal(true);
               }}
-            >
-              <i className="ri-pencil-line" />
-            </Button>
-            <Button
-              color="outline-danger"
-              size="sm"
-              className="btn-icon"
+            />
+            <ActionIconButton
+              id={`delete-tenant-${row._id}`}
+              icon={<RiDeleteBinLine size={16} />}
+              tooltip="Delete Tenant"
               onClick={() => {
                 setSelectedTenant(row);
                 setDeleteModal(true);
               }}
-            >
-              <i className="ri-delete-bin-line" />
-            </Button>
+            />
           </div>
         ),
       },
@@ -777,7 +773,7 @@ const Tenants = () => {
                       <th>Type</th>
                       <th>File</th>
                       <th>Status</th>
-                      <th>Action</th>
+                      <th>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -800,9 +796,16 @@ const Tenants = () => {
                             </Badge>
                           </td>
                           <td>
-                            <Button
-                              size="sm"
-                              color={doc.isVerified ? "outline-secondary" : "outline-success"}
+                            <ActionIconButton
+                              id={`toggle-tenant-document-${doc._id}`}
+                              icon={
+                                doc.isVerified ? (
+                                  <RiCloseCircleLine size={16} />
+                                ) : (
+                                  <RiShieldCheckLine size={16} />
+                                )
+                              }
+                              tooltip={doc.isVerified ? "Unverify Document" : "Verify Document"}
                               onClick={async () => {
                                 await dispatch(
                                   onVerifyTenantDocument({
@@ -813,9 +816,7 @@ const Tenants = () => {
                                 );
                                 await dispatch(onGetTenantDocuments({ id: selectedTenant._id }));
                               }}
-                            >
-                              {doc.isVerified ? "Unverify" : "Verify"}
-                            </Button>
+                            />
                           </td>
                         </tr>
                       ))

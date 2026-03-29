@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import DataTable from "react-data-table-component";
-import Select from "react-select";
+import DataTable from "../../../Components/Common/AppDataTable";
+import Select from "../../../Components/Common/AppSelect";
 import {
     Badge,
     Button,
@@ -59,8 +59,7 @@ import {
 } from "chart.js";
 import { Bar, Line, Doughnut } from "react-chartjs-2";
 import BreadCrumb from "../../../Components/Common/BreadCrumb";
-import { ReportsAPI } from "../../../helpers/backend_helper";
-import { useDispatch } from "react-redux";
+import { ReportsAPI, TenantsAPI } from "../../../helpers/backend_helper";
 
 ChartJS.register(
     CategoryScale,
@@ -235,19 +234,46 @@ const TenantSummaryCard = ({ tenant, invoices, payments }) => {
 
 const TenantHistoryReport = () => {
     document.title = "Tenant Invoice & Payments History | Apartment Management";
-    const dispatch = useDispatch();
 
     const [reportData, setReportData] = useState(null);
     const [loading, setLoading] = useState(false);
-    const [searchText, setSearchText] = useState("");
     const [activeTab, setActiveTab] = useState("all");
+    const [tenantOptions, setTenantOptions] = useState([]);
     const [selectedTenant, setSelectedTenant] = useState(null);
     const [dateRange, setDateRange] = useState({ from: "", to: "" });
 
+    useEffect(() => {
+        const fetchTenants = async () => {
+            try {
+                const response = await TenantsAPI.list({ page: 1, limit: 100 });
+                if (!response.success) return;
+                const options = (response.data?.data || []).map((tenant) => ({
+                    value: tenant._id,
+                    label: `${tenant.personalInfo?.firstName || ""} ${tenant.personalInfo?.lastName || ""}`.trim() || tenant.tenantCode || "Unknown Tenant",
+                }));
+                setTenantOptions(options);
+            } catch (_error) {
+                setTenantOptions([]);
+            }
+        };
+
+        fetchTenants();
+    }, []);
+
     const fetchReport = useCallback(async () => {
+        if (!selectedTenant?.value) {
+            setReportData(null);
+            return;
+        }
+
         setLoading(true);
         try {
-            const response = await ReportsAPI.tenantHistory({});
+            const payload = {
+                tenantId: selectedTenant.value,
+                dateFrom: dateRange.from || undefined,
+                dateTo: dateRange.to || undefined,
+            };
+            const response = await ReportsAPI.tenantHistory(payload);
             if (response.success) {
                 setReportData(response.data);
             }
@@ -256,10 +282,14 @@ const TenantHistoryReport = () => {
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [dateRange.from, dateRange.to, selectedTenant]);
 
     useEffect(() => {
-        fetchReport();
+        if (selectedTenant?.value) {
+            fetchReport();
+        } else {
+            setReportData(null);
+        }
     }, [fetchReport]);
 
     // Process data for charts
@@ -267,7 +297,9 @@ const TenantHistoryReport = () => {
         if (!reportData?.details) return null;
 
         const invoices = reportData.details.invoices || [];
-        const payments = reportData.details.payments || [];
+        const payments = (reportData.details.payments || []).filter(
+            (payment) => payment.status?.toLowerCase() === "reconciled",
+        );
 
         // Monthly trends
         const monthlyData = {};
@@ -422,57 +454,21 @@ const TenantHistoryReport = () => {
     const allTransactions = useMemo(() => {
         if (!reportData?.details) return [];
         const invoices = (reportData.details.invoices || []).map(inv => ({ ...inv, transactionType: "Invoice" }));
-        const payments = (reportData.details.payments || []).map(pay => ({ ...pay, transactionType: "Payment" }));
+        const payments = (reportData.details.payments || [])
+            .filter((pay) => pay.status?.toLowerCase() === "reconciled")
+            .map(pay => ({ ...pay, transactionType: "Payment" }));
         return [...invoices, ...payments].sort((a, b) => new Date(b.date) - new Date(a.date));
     }, [reportData]);
 
     const filteredTransactions = useMemo(() => {
         let transactions = [...allTransactions];
 
-        const keyword = searchText.trim().toLowerCase();
-        if (keyword) {
-            transactions = transactions.filter(t =>
-                t.reference?.toLowerCase().includes(keyword) ||
-                t.tenant?.fullName?.toLowerCase().includes(keyword) ||
-                t.lease?.leaseNumber?.toLowerCase().includes(keyword)
-            );
-        }
-
         if (activeTab !== "all") {
             transactions = transactions.filter(t => t.type === activeTab);
         }
 
-        if (dateRange.from) {
-            transactions = transactions.filter(t => new Date(t.date) >= new Date(dateRange.from));
-        }
-        if (dateRange.to) {
-            transactions = transactions.filter(t => new Date(t.date) <= new Date(dateRange.to));
-        }
-
         return transactions;
-    }, [allTransactions, searchText, activeTab, dateRange]);
-
-    // Group by tenant for summary cards
-    const tenantGroups = useMemo(() => {
-        const groups = new Map();
-        allTransactions.forEach(transaction => {
-            const tenantId = transaction.tenant?._id || "unknown";
-            if (!groups.has(tenantId)) {
-                groups.set(tenantId, {
-                    tenant: transaction.tenant,
-                    invoices: [],
-                    payments: [],
-                });
-            }
-            const group = groups.get(tenantId);
-            if (transaction.type === "invoice") {
-                group.invoices.push(transaction);
-            } else {
-                group.payments.push(transaction);
-            }
-        });
-        return Array.from(groups.values()).filter(g => g.tenant !== null);
-    }, [allTransactions]);
+    }, [activeTab, allTransactions]);
 
     const columns = [
         {
@@ -493,15 +489,6 @@ const TenantHistoryReport = () => {
                 <div>
                     <div className="fw-semibold">{row.reference}</div>
                     <small className="text-muted">{formatDate(row.date)}</small>
-                </div>
-            ),
-        },
-        {
-            name: "Tenant",
-            cell: (row) => (
-                <div>
-                    <div className="fw-semibold">{row.tenant?.fullName || "Unknown"}</div>
-                    <small className="text-muted">{row.tenant?.tenantCode || "-"}</small>
                 </div>
             ),
         },
@@ -557,10 +544,6 @@ const TenantHistoryReport = () => {
             "Type": row.type === "invoice" ? "Invoice" : "Payment",
             "Reference": row.reference,
             "Date": formatDate(row.date),
-            "Tenant Name": row.tenant?.fullName || "Unknown",
-            "Tenant Code": row.tenant?.tenantCode || "-",
-            "Phone": row.tenant?.phone || "-",
-            "Email": row.tenant?.email || "-",
             "Lease Number": row.lease?.leaseNumber || "-",
             "Monthly Rent": row.lease?.rentAmount || 0,
             "Amount": row.amount,
@@ -604,7 +587,6 @@ const TenantHistoryReport = () => {
           <tr style="background: #f8f9fa; border-bottom: 2px solid #e2e8f0;">
             <th style="padding: 12px; text-align: left;">Type</th>
             <th style="padding: 12px; text-align: left;">Reference</th>
-            <th style="padding: 12px; text-align: left;">Tenant</th>
             <th style="padding: 12px; text-align: right;">Amount</th>
             <th style="padding: 12px; text-align: center;">Status</th>
            </tr>
@@ -620,10 +602,6 @@ const TenantHistoryReport = () => {
               <td style="padding: 12px;">
                 ${row.reference}<br/>
                 <small>${formatDate(row.date)}</small>
-              </td>
-              <td style="padding: 12px;">
-                ${row.tenant?.fullName || "Unknown"}<br/>
-                <small>${row.tenant?.tenantCode || "-"}</small>
               </td>
               <td style="padding: 12px; text-align: right; font-weight: bold;">
                 ${formatCurrency(row.amount)}
@@ -720,9 +698,9 @@ const TenantHistoryReport = () => {
                                         <FiUsers size={24} className="text-primary" />
                                     </div>
                                     <div>
-                                        <h4 className="mb-1">Tenant Invoice & Payments History</h4>
+                                        <h4 className="mb-1">Single Tenant Invoice & Payments History</h4>
                                         <p className="text-muted mb-0">
-                                            Complete transaction history for all tenants including invoices and payments
+                                            Review one tenant at a time and count only reconciled payments in totals
                                         </p>
                                     </div>
                                 </div>
@@ -748,13 +726,14 @@ const TenantHistoryReport = () => {
                     <CardBody className="p-4">
                         <Row className="g-3">
                             <Col lg={4} md={6}>
-                                <Label className="form-label text-muted small mb-1">Search</Label>
-                                <Input
-                                    type="text"
-                                    placeholder="Reference, tenant, lease..."
-                                    value={searchText}
-                                    onChange={(e) => setSearchText(e.target.value)}
-                                    className="form-control"
+                                <Label className="form-label text-muted small mb-1">Tenant</Label>
+                                <Select
+                                    options={tenantOptions}
+                                    value={selectedTenant}
+                                    onChange={setSelectedTenant}
+                                    placeholder="Select tenant"
+                                    isClearable
+                                    styles={selectStyles}
                                 />
                             </Col>
                             <Col lg={3} md={6}>
@@ -776,8 +755,8 @@ const TenantHistoryReport = () => {
                                 />
                             </Col>
                             <Col lg={2} md={6} className="d-flex align-items-end">
-                                <Button color="primary" onClick={fetchReport} className="w-100">
-                                    <FiRefreshCw className="me-1" size={16} /> Refresh
+                                <Button color="primary" onClick={fetchReport} className="w-100" disabled={!selectedTenant?.value}>
+                                    <FiRefreshCw className="me-1" size={16} /> Apply
                                 </Button>
                             </Col>
                         </Row>
@@ -797,37 +776,37 @@ const TenantHistoryReport = () => {
                             <Col lg={3} md={6} className="mb-3">
                                 <StatCard
                                     icon={FiFileText}
-                                    title="This Month Invoices"
-                                    value={formatCurrency(summary?.thisMonthInvoiceAmount || 0)}
+                                    title="Invoice Amount"
+                                    value={formatCurrency(chartData?.totalInvoiceAmount || 0)}
                                     color="primary"
-                                    subtitle="Current period"
+                                    subtitle="Selected tenant total"
                                 />
                             </Col>
                             <Col lg={3} md={6} className="mb-3">
                                 <StatCard
                                     icon={FiCheckCircle}
-                                    title="This Month Payments"
-                                    value={formatCurrency(summary?.thisMonthPaidAmount || 0)}
+                                    title="Reconciled Payments"
+                                    value={formatCurrency(chartData?.totalPaymentAmount || 0)}
                                     color="success"
-                                    subtitle="Received this month"
+                                    subtitle="Ignored non-reconciled"
                                 />
                             </Col>
                             <Col lg={3} md={6} className="mb-3">
                                 <StatCard
                                     icon={FiAlertCircle}
-                                    title="This Month Balance"
-                                    value={formatCurrency(summary?.thisMonthBalance || 0)}
+                                    title="Outstanding Balance"
+                                    value={formatCurrency((chartData?.totalInvoiceAmount || 0) - (chartData?.totalPaymentAmount || 0))}
                                     color="danger"
-                                    subtitle="Outstanding"
+                                    subtitle="Invoices minus reconciled payments"
                                 />
                             </Col>
                             <Col lg={3} md={6} className="mb-3">
                                 <StatCard
                                     icon={FiTrendingUp}
                                     title="Total Transactions"
-                                    value={(summary?.totalHistoricalInvoices || 0) + (summary?.totalHistoricalPayments || 0)}
+                                    value={(chartData?.totalInvoices || 0) + (chartData?.totalPayments || 0)}
                                     color="info"
-                                    subtitle="All time"
+                                    subtitle="Selected tenant transactions"
                                 />
                             </Col>
                         </Row>
@@ -839,7 +818,7 @@ const TenantHistoryReport = () => {
                                     <CardHeader className="bg-white border-0 pt-4">
                                         <div className="d-flex align-items-center">
                                             <FiBarChart2 size={18} className="text-primary me-2" />
-                                            <h6 className="mb-0">Monthly Invoice vs Payment Trend</h6>
+                                            <h6 className="mb-0">Invoice vs Reconciled Payment Trend</h6>
                                         </div>
                                     </CardHeader>
                                     <CardBody>
@@ -865,24 +844,6 @@ const TenantHistoryReport = () => {
                                 </Card>
                             </Col>
                         </Row>
-
-                        {/* Tenant Summary Cards */}
-                        {tenantGroups.length > 0 && (
-                            <>
-                                <h5 className="mb-3">Tenant Summary</h5>
-                                <Row className="mb-4">
-                                    {tenantGroups.slice(0, 4).map((group, idx) => (
-                                        <Col lg={3} md={6} className="mb-3" key={idx}>
-                                            <TenantSummaryCard
-                                                tenant={group.tenant}
-                                                invoices={group.invoices}
-                                                payments={group.payments}
-                                            />
-                                        </Col>
-                                    ))}
-                                </Row>
-                            </>
-                        )}
 
                         {/* Transaction Details Table */}
                         <Card className="border-0 shadow-sm">
@@ -914,7 +875,7 @@ const TenantHistoryReport = () => {
                                                     onClick={() => setActiveTab("payment")}
                                                     style={{ cursor: "pointer", borderRadius: "8px" }}
                                                 >
-                                                    Payments
+                                                    Reconciled Payments
                                                 </NavLink>
                                             </NavItem>
                                         </Nav>

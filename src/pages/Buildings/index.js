@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import DataTable from "react-data-table-component";
-import Select from "react-select";
+import DataTable from "../../Components/Common/AppDataTable";
+import Select from "../../Components/Common/AppSelect";
 import {
     Card, CardHeader, CardBody,
     Col, Container, Row,
@@ -12,9 +12,11 @@ import {
 } from "reactstrap";
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import { RiDeleteBinLine, RiEyeLine, RiPencilLine } from "react-icons/ri";
 import BreadCrumb from "../../Components/Common/BreadCrumb";
 import DeleteModal from "../../Components/Common/DeleteModal";
 import Loader from "../../Components/Common/Loader";
+import ActionIconButton from "../../Components/Common/ActionIconButton";
 import { useDispatch, useSelector } from 'react-redux';
 import { createSelector } from 'reselect';
 import classnames from 'classnames';
@@ -356,31 +358,25 @@ const Buildings = () => {
         {
             name: 'Actions',
             cell: (row) => (
-                <div className="d-flex gap-1">
-                    <Button
-                        color="info"
-                        size="sm"
+                <div className="d-flex gap-2">
+                    <ActionIconButton
+                        id={`view-building-${row._id}`}
+                        icon={<RiEyeLine size={16} />}
+                        tooltip="View Building"
                         onClick={() => handleViewBuilding(row._id)}
-                        className="btn-icon"
-                    >
-                        <i className="ri-eye-line" />
-                    </Button>
-                    <Button
-                        color="primary"
-                        size="sm"
+                    />
+                    <ActionIconButton
+                        id={`edit-building-${row._id}`}
+                        icon={<RiPencilLine size={16} />}
+                        tooltip="Edit Building"
                         onClick={() => handleEditBuilding(row)}
-                        className="btn-icon"
-                    >
-                        <i className="ri-pencil-line" />
-                    </Button>
-                    <Button
-                        color="danger"
-                        size="sm"
+                    />
+                    <ActionIconButton
+                        id={`delete-building-${row._id}`}
+                        icon={<RiDeleteBinLine size={16} />}
+                        tooltip="Delete Building"
                         onClick={() => handleDeleteBuilding(row)}
-                        className="btn-icon"
-                    >
-                        <i className="ri-delete-bin-line" />
-                    </Button>
+                    />
                 </div>
             ),
 
@@ -544,17 +540,13 @@ const Buildings = () => {
                                 paginationDefaultPage={currentPage}
                                 onChangePage={(page) => setCurrentPage(page)}
                                 responsive
-                                noDataComponent={
-                                    <div className="text-center py-5">
-                                        <i className="ri-building-line display-4 text-muted"></i>
-                                        <h5 className="mt-3">No buildings found</h5>
-                                        <p className="text-muted">Try adjusting your filters or add a new building.</p>
-                                        <Button color="primary" size="sm" onClick={handleCreateBuilding}>
-                                            <i className="ri-add-line me-1"></i>
-                                            Add Building
-                                        </Button>
-                                    </div>
-                                }
+                                emptyStateProps={{
+                                    icon: "ri-building-line",
+                                    title: "No Data Found",
+                                    description: "No buildings match the current filters.",
+                                    actionLabel: "Add Building",
+                                    onAction: handleCreateBuilding,
+                                }}
                                 customStyles={{
                                     headCells: {
                                         style: {

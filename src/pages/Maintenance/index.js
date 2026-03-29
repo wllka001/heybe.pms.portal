@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import DataTable from "react-data-table-component";
-import Select from "react-select";
+import DataTable from "../../Components/Common/AppDataTable";
+import Select from "../../Components/Common/AppSelect";
 import {
   Badge,
   Button,
@@ -25,9 +25,11 @@ import { createSelector } from "reselect";
 import { useDispatch, useSelector } from "react-redux";
 import { useFormik } from "formik";
 import * as Yup from "yup";
+import { RiAttachment2, RiMoneyDollarCircleLine, RiUserSettingsLine } from "react-icons/ri";
 import { ToastContainer } from "react-toastify";
 import BreadCrumb from "../../Components/Common/BreadCrumb";
 import Loader from "../../Components/Common/Loader";
+import ActionIconButton from "../../Components/Common/ActionIconButton";
 import {
   addMaintenanceAttachment as onAddMaintenanceAttachment,
   addMaintenanceCost as onAddMaintenanceCost,
@@ -291,12 +293,11 @@ const Maintenance = () => {
     {
       name: "Actions",
       cell: (row) => (
-        <div className="d-flex gap-1">
-          <Button
-            color="outline-primary"
-            size="sm"
-            className="btn-icon"
-            title="Assign"
+        <div className="d-flex gap-2">
+          <ActionIconButton
+            id={`assign-maintenance-${row._id}`}
+            icon={<RiUserSettingsLine size={16} />}
+            tooltip="Assign"
             onClick={() => {
               setSelectedRequest(row);
               setAssignData({
@@ -307,14 +308,11 @@ const Maintenance = () => {
               });
               setAssignModal(true);
             }}
-          >
-            <i className="ri-user-settings-line" />
-          </Button>
-          <Button
-            color="outline-success"
-            size="sm"
-            className="btn-icon"
-            title="Cost"
+          />
+          <ActionIconButton
+            id={`cost-maintenance-${row._id}`}
+            icon={<RiMoneyDollarCircleLine size={16} />}
+            tooltip="Update Cost"
             onClick={() => {
               setSelectedRequest(row);
               setCostData({
@@ -325,22 +323,17 @@ const Maintenance = () => {
               });
               setCostModal(true);
             }}
-          >
-            <i className="ri-money-dollar-circle-line" />
-          </Button>
-          <Button
-            color="outline-info"
-            size="sm"
-            className="btn-icon"
-            title="Attachment"
+          />
+          <ActionIconButton
+            id={`attachment-maintenance-${row._id}`}
+            icon={<RiAttachment2 size={16} />}
+            tooltip="Manage Attachment"
             onClick={() => {
               setSelectedRequest(row);
               setAttachmentData({ type: "document", note: "", file: null });
               setAttachmentModal(true);
             }}
-          >
-            <i className="ri-attachment-2" />
-          </Button>
+          />
         </div>
       ),
     },

@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import DataTable from "react-data-table-component";
-import Select from "react-select";
+import DataTable from "../../../Components/Common/AppDataTable";
+import Select from "../../../Components/Common/AppSelect";
 import {
   Badge,
   Button,
@@ -18,7 +18,6 @@ import {
   ModalHeader,
   Row,
   Spinner,
-  UncontrolledTooltip,
 } from "reactstrap";
 import { createSelector } from "reselect";
 import { useDispatch, useSelector } from "react-redux";
@@ -39,6 +38,7 @@ import {
   FiCheckCircle
 } from "react-icons/fi";
 import BreadCrumb from "../../../Components/Common/BreadCrumb";
+import ActionIconButton from "../../../Components/Common/ActionIconButton";
 import { FinanceAPI } from "../../../helpers/backend_helper";
 import { getInvoices as onGetInvoices, getLeases as onGetLeases } from "../../../slices/thunks";
 import { downloadInvoicePdf } from "../../../utils/financeDocuments";
@@ -305,27 +305,18 @@ const Invoices = () => {
       width: "120px",
       cell: (row) => (
         <div className="d-flex gap-2">
-          <Button
-            size="sm"
-            color="light"
+          <ActionIconButton
             onClick={() => openInvoiceDetails(row._id)}
             id={`view-${row._id}`}
-            className="rounded-circle p-2"
-          >
-            <FiEye size={16} />
-          </Button>
-          <UncontrolledTooltip target={`view-${row._id}`}>View Details</UncontrolledTooltip>
-
-          <Button
-            size="sm"
-            color="light"
+            icon={<FiEye size={16} />}
+            tooltip="View Details"
+          />
+          <ActionIconButton
             onClick={() => handleInvoicePdf(row)}
             id={`print-${row._id}`}
-            className="rounded-circle p-2"
-          >
-            <FiPrinter size={16} />
-          </Button>
-          <UncontrolledTooltip target={`print-${row._id}`}>Print Invoice</UncontrolledTooltip>
+            icon={<FiPrinter size={16} />}
+            tooltip="Print Invoice"
+          />
         </div>
       ),
     },

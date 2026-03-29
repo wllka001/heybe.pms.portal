@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import DataTable from "react-data-table-component";
-import Select from "react-select";
+import DataTable from "../../Components/Common/AppDataTable";
+import Select from "../../Components/Common/AppSelect";
 import {
   Badge,
   Button,
@@ -26,9 +26,11 @@ import { useDispatch, useSelector } from "react-redux";
 import { useFormik } from "formik";
 import * as Yup from "yup";
 import { ToastContainer } from "react-toastify";
+import { RiDeleteBinLine, RiPencilLine } from "react-icons/ri";
 import BreadCrumb from "../../Components/Common/BreadCrumb";
 import DeleteModal from "../../Components/Common/DeleteModal";
 import Loader from "../../Components/Common/Loader";
+import ActionIconButton from "../../Components/Common/ActionIconButton";
 import {
   createEmployee as onCreateEmployee,
   deleteEmployee as onDeleteEmployee,
@@ -36,6 +38,7 @@ import {
   getEmployees as onGetEmployees,
   updateEmployee as onUpdateEmployee,
 } from "../../slices/thunks";
+import { FiEye } from "react-icons/fi";
 
 const statusOptions = [
   { value: "all", label: "All" },
@@ -275,40 +278,40 @@ const Employees = () => {
     {
       name: "Actions",
       cell: (row) => (
-        <div className="d-flex gap-1">
-          <Button
-            color="outline-info"
-            size="sm"
-            className="btn-icon"
+        <div className="d-flex gap-2">
+          <ActionIconButton
+            id={`view-employee-${row._id}`}
+            icon={<FiEye size={16} />}
+            tooltip="View Employee"
             onClick={() => {
               setSelectedEmployee(row);
               setViewModal(true);
             }}
-          >
-            <i className="ri-eye-line" />
-          </Button>
-          <Button
-            color="outline-primary"
-            size="sm"
-            className="btn-icon"
+          />
+          {/* <ActionIconButton
+            onClick={() => openDetails(row)}
+            id={`view-${row._id}`}
+           
+            tooltip="View Details"
+          /> */}
+          <ActionIconButton
+            id={`edit-employee-${row._id}`}
+            icon={<RiPencilLine size={16} />}
+            tooltip="Edit Employee"
             onClick={() => {
               setSelectedEmployee(row);
               setModal(true);
             }}
-          >
-            <i className="ri-pencil-line" />
-          </Button>
-          <Button
-            color="outline-danger"
-            size="sm"
-            className="btn-icon"
+          />
+          <ActionIconButton
+            id={`delete-employee-${row._id}`}
+            icon={<RiDeleteBinLine size={16} />}
+            tooltip="Delete Employee"
             onClick={() => {
               setSelectedEmployee(row);
               setDeleteModal(true);
             }}
-          >
-            <i className="ri-delete-bin-line" />
-          </Button>
+          />
         </div>
       ),
     },

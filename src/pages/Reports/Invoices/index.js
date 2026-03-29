@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import DataTable from "react-data-table-component";
-import Select from "react-select";
+import DataTable from "../../../Components/Common/AppDataTable";
+import Select from "../../../Components/Common/AppSelect";
 import {
     Badge,
     Button,

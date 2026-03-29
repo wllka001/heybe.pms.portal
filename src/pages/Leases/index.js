@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import DataTable from "react-data-table-component";
-import Select from "react-select";
+import DataTable from "../../Components/Common/AppDataTable";
+import Select from "../../Components/Common/AppSelect";
 import {
   Badge,
   Button,
@@ -25,9 +25,11 @@ import { createSelector } from "reselect";
 import { useDispatch, useSelector } from "react-redux";
 import { useFormik } from "formik";
 import * as Yup from "yup";
+import { RiCloseCircleLine, RiEyeLine, RiPencilLine } from "react-icons/ri";
 import { ToastContainer } from "react-toastify";
 import BreadCrumb from "../../Components/Common/BreadCrumb";
 import Loader from "../../Components/Common/Loader";
+import ActionIconButton from "../../Components/Common/ActionIconButton";
 import { LeasesAPI } from "../../helpers/backend_helper";
 import {
   createLease as onCreateLease,
@@ -72,8 +74,12 @@ const Leases = () => {
   const [modal, setModal] = useState(false);
   const [viewModal, setViewModal] = useState(false);
   const [selectedLease, setSelectedLease] = useState(null);
+  const [leaseToTerminate, setLeaseToTerminate] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [status, setStatus] = useState("all");
+  const [terminateModal, setTerminateModal] = useState(false);
+  const [terminationReason, setTerminationReason] = useState("");
+  const [terminationSubmitting, setTerminationSubmitting] = useState(false);
   const [activeLeaseReferences, setActiveLeaseReferences] = useState({
     tenantIds: new Set(),
     unitIds: new Set(),
@@ -98,29 +104,56 @@ const Leases = () => {
     dispatch(onGetUnits({ params: { page: 1, limit: 100 } }));
   }, [dispatch]);
 
-  useEffect(() => {
-    const loadActiveLeaseReferences = async () => {
-      try {
-        const res = await LeasesAPI.active();
-        if (!res.success) return;
-        const data = Array.isArray(res.data) ? res.data : [];
-        const tenantIds = new Set();
-        const unitIds = new Set();
-        data.forEach((lease) => {
-          const tenantId =
-            typeof lease.tenantId === "object" ? lease.tenantId?._id : lease.tenantId;
-          const unitId = typeof lease.unitId === "object" ? lease.unitId?._id : lease.unitId;
-          if (tenantId) tenantIds.add(tenantId);
-          if (unitId) unitIds.add(unitId);
-        });
-        setActiveLeaseReferences({ tenantIds, unitIds });
-      } catch (_e) {
-        setActiveLeaseReferences({ tenantIds: new Set(), unitIds: new Set() });
-      }
-    };
-
-    loadActiveLeaseReferences();
+  const loadActiveLeaseReferences = useCallback(async () => {
+    try {
+      const res = await LeasesAPI.active();
+      if (!res.success) return;
+      const data = Array.isArray(res.data) ? res.data : [];
+      const tenantIds = new Set();
+      const unitIds = new Set();
+      data.forEach((lease) => {
+        const tenantId =
+          typeof lease.tenantId === "object" ? lease.tenantId?._id : lease.tenantId;
+        const unitId = typeof lease.unitId === "object" ? lease.unitId?._id : lease.unitId;
+        if (tenantId) tenantIds.add(tenantId);
+        if (unitId) unitIds.add(unitId);
+      });
+      setActiveLeaseReferences({ tenantIds, unitIds });
+    } catch (_e) {
+      setActiveLeaseReferences({ tenantIds: new Set(), unitIds: new Set() });
+    }
   }, []);
+
+  useEffect(() => {
+    loadActiveLeaseReferences();
+  }, [loadActiveLeaseReferences]);
+
+  const openTerminateModal = (lease) => {
+    setLeaseToTerminate(lease);
+    setTerminationReason("");
+    setTerminateModal(true);
+  };
+
+  const confirmTerminateLease = async () => {
+    if (!leaseToTerminate?._id || !terminationReason.trim()) return;
+
+    setTerminationSubmitting(true);
+    try {
+      await dispatch(
+        onTerminateLease({
+          id: leaseToTerminate._id,
+          data: { reason: terminationReason.trim(), fees: 0 },
+        }),
+      );
+      setTerminateModal(false);
+      setLeaseToTerminate(null);
+      setTerminationReason("");
+      fetchLeases();
+      loadActiveLeaseReferences();
+    } finally {
+      setTerminationSubmitting(false);
+    }
+  };
 
   const tenantOptions = useMemo(
     () =>
@@ -316,46 +349,32 @@ const Leases = () => {
     {
       name: "Actions",
       cell: (row) => (
-        <div className="d-flex gap-1">
-          <Button
-            color="outline-info"
-            size="sm"
-            className="btn-icon"
+        <div className="d-flex gap-2">
+          <ActionIconButton
+            id={`view-lease-${row._id}`}
+            icon={<RiEyeLine size={16} />}
+            tooltip="View Lease"
             onClick={() => {
               setSelectedLease(row);
               setViewModal(true);
             }}
-          >
-            <i className="ri-eye-line" />
-          </Button>
-          <Button
-            color="outline-primary"
-            size="sm"
-            className="btn-icon"
+          />
+          <ActionIconButton
+            id={`edit-lease-${row._id}`}
+            icon={<RiPencilLine size={16} />}
+            tooltip="Edit Lease"
             onClick={() => {
               setSelectedLease(row);
               setModal(true);
             }}
-          >
-            <i className="ri-pencil-line" />
-          </Button>
+          />
           {row.status === "active" && (
-            <Button
-              color="outline-danger"
-              size="sm"
-              className="btn-icon"
-              onClick={async () => {
-                await dispatch(
-                  onTerminateLease({
-                    id: row._id,
-                    data: { reason: "Terminated from UI", fees: 0 },
-                  }),
-                );
-                fetchLeases();
-              }}
-            >
-              <i className="ri-close-circle-line" />
-            </Button>
+            <ActionIconButton
+              id={`terminate-lease-${row._id}`}
+              icon={<RiCloseCircleLine size={16} />}
+              tooltip="Terminate Lease"
+              onClick={() => openTerminateModal(row)}
+            />
           )}
         </div>
       ),
@@ -715,6 +734,40 @@ const Leases = () => {
         <ModalFooter className="bg-light">
           <Button color="light" onClick={() => setViewModal(false)}>
             Close
+          </Button>
+        </ModalFooter>
+      </Modal>
+
+      <Modal isOpen={terminateModal} toggle={() => setTerminateModal(false)} centered>
+        <ModalHeader toggle={() => setTerminateModal(false)} className="bg-light">
+          Terminate Lease
+        </ModalHeader>
+        <ModalBody>
+          <p className="text-muted mb-3">
+            Provide a reason before terminating{" "}
+            <span className="fw-semibold">{leaseToTerminate?.leaseNumber || "this lease"}</span>.
+          </p>
+          <FormGroup className="mb-0">
+            <Label className="form-label">Termination Reason *</Label>
+            <Input
+              type="textarea"
+              rows="4"
+              value={terminationReason}
+              onChange={(e) => setTerminationReason(e.target.value)}
+              placeholder="Enter the reason for terminating this lease"
+            />
+          </FormGroup>
+        </ModalBody>
+        <ModalFooter className="bg-light">
+          <Button color="light" onClick={() => setTerminateModal(false)}>
+            Cancel
+          </Button>
+          <Button
+            color="danger"
+            onClick={confirmTerminateLease}
+            disabled={!terminationReason.trim() || terminationSubmitting}
+          >
+            {terminationSubmitting ? "Terminating..." : "Confirm Termination"}
           </Button>
         </ModalFooter>
       </Modal>

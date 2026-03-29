@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import DataTable from "react-data-table-component";
-import Select from "react-select";
+import DataTable from "../../../Components/Common/AppDataTable";
+import Select from "../../../Components/Common/AppSelect";
 import {
   Badge,
   Button,
@@ -18,7 +18,6 @@ import {
   ModalFooter,
   ModalHeader,
   Row,
-  UncontrolledTooltip,
 } from "reactstrap";
 import { createSelector } from "reselect";
 import { useDispatch, useSelector } from "react-redux";
@@ -42,6 +41,7 @@ import {
   FiXCircle,
 } from "react-icons/fi";
 import BreadCrumb from "../../../Components/Common/BreadCrumb";
+import ActionIconButton from "../../../Components/Common/ActionIconButton";
 import { FinanceAPI } from "../../../helpers/backend_helper";
 import {
   createExpense as onCreateExpense,
@@ -393,34 +393,26 @@ const Expenses = () => {
       width: "180px",
       cell: (row) => (
         <div className="d-flex gap-2">
-          <Button size="sm" color="light" onClick={() => openDetails(row)} id={`view-${row._id}`} className="rounded-circle p-2">
-            <FiEye size={16} />
-          </Button>
-          <UncontrolledTooltip target={`view-${row._id}`}>View Details</UncontrolledTooltip>
-
-          <Button
-            size="sm"
-            color="light"
+          <ActionIconButton
+            onClick={() => openDetails(row)}
+            id={`view-${row._id}`}
+            icon={<FiEye size={16} />}
+            tooltip="View Details"
+          />
+          <ActionIconButton
             onClick={() => applyApproval(row, "approved")}
             disabled={row.approval?.status === "approved"}
             id={`approve-${row._id}`}
-            className="rounded-circle p-2"
-          >
-            <FiThumbsUp size={16} className="text-success" />
-          </Button>
-          <UncontrolledTooltip target={`approve-${row._id}`}>Approve Expense</UncontrolledTooltip>
-
-          <Button
-            size="sm"
-            color="light"
+            icon={<FiThumbsUp size={16} />}
+            tooltip="Approve Expense"
+          />
+          <ActionIconButton
             onClick={() => applyApproval(row, "rejected")}
             disabled={row.approval?.status === "rejected"}
             id={`reject-${row._id}`}
-            className="rounded-circle p-2"
-          >
-            <FiThumbsDown size={16} className="text-danger" />
-          </Button>
-          <UncontrolledTooltip target={`reject-${row._id}`}>Reject Expense</UncontrolledTooltip>
+            icon={<FiThumbsDown size={16} />}
+            tooltip="Reject Expense"
+          />
         </div>
       ),
     },

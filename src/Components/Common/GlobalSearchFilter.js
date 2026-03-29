@@ -10,7 +10,7 @@ import {
 } from "reactstrap";
 import { Link } from "react-router-dom";
 import Flatpickr from "react-flatpickr";
-import Select from "react-select";
+import AppSelect from "./AppSelect";
 
 const ProductsGlobalFilter = () => {
     return (
@@ -270,6 +270,16 @@ const CompaniesGlobalFilter = () => {
 };
 
 const CryptoOrdersGlobalFilter = () => {
+    const typeOptions = [
+        { value: "buy", label: "Buy" },
+        { value: "sell", label: "Sell" },
+    ];
+    const statusOptions = [
+        { value: "successful", label: "Successful" },
+        { value: "cancelled", label: "Cancelled" },
+        { value: "pending", label: "Pending" },
+    ];
+
     return (
         <React.Fragment>
             <Col xl={2} md={6}>
@@ -286,21 +296,18 @@ const CryptoOrdersGlobalFilter = () => {
                 </div>
             </Col>
             <Col xl={2} md={4}>
-                <select className="form-control" data-choices data-choices-search-false name="choices-single-default"
-                    id="choices-single-default">
-                    <option defaultValue="all">Select Type</option>
-                    <option value="Buy">Sell</option>
-                    <option value="Sell">Buy</option>
-                </select>
+                <AppSelect
+                    options={typeOptions}
+                    placeholder="Select order type"
+                    isSearchable={false}
+                />
             </Col>
             <Col xl={2} md={4}>
-                <select className="form-control" data-choices data-choices-search-false name="choices-single-default2"
-                    id="choices-single-default2">
-                    <option defaultValue="all">Select Status</option>
-                    <option value="Successful">Successful</option>
-                    <option value="Cancelled">Cancelled</option>
-                    <option value="Pending">Pending</option>
-                </select>
+                <AppSelect
+                    options={statusOptions}
+                    placeholder="Select status"
+                    isSearchable={false}
+                />
             </Col>
             <Col xl={1} md={4}>
                 <button className="btn btn-success w-100">Filters</button>
@@ -347,7 +354,7 @@ const InvoiceListGlobalSearch = () => {
 
             <Col sm={4} xxl={3}>
                 <div className="input-light">
-                    <Select
+                    <AppSelect
                         value={isStatus}
                         onChange={() => {
                             handleisStatus();
@@ -355,7 +362,7 @@ const InvoiceListGlobalSearch = () => {
                         options={allstatus}
                         name="choices-single-default"
                         id="idStatus"
-                    ></Select>
+                    />
                 </div>
             </Col>
 
@@ -371,6 +378,14 @@ const InvoiceListGlobalSearch = () => {
 };
 
 const TicketsListGlobalFilter = () => {
+    const statusOptions = [
+        { value: "all", label: "All" },
+        { value: "open", label: "Open" },
+        { value: "inprogress", label: "In Progress" },
+        { value: "closed", label: "Closed" },
+        { value: "new", label: "New" },
+    ];
+
     return (
         <React.Fragment>
             <Col xxl={3} sm={4}>
@@ -385,14 +400,11 @@ const TicketsListGlobalFilter = () => {
             </Col>
             <Col xxl={3} sm={4}>
                 <div className="input-light">
-                    <select className="form-control" data-choices data-choices-search-false name="choices-single-default" id="idStatus">
-                        <option value="">Status</option>
-                        <option defaultValue="all">All</option>
-                        <option value="Open">Open</option>
-                        <option value="Inprogress">Inprogress</option>
-                        <option value="Closed">Closed</option>
-                        <option value="New">New</option>
-                    </select>
+                    <AppSelect
+                        options={statusOptions}
+                        placeholder="Select status"
+                        isSearchable={false}
+                    />
                 </div>
             </Col>
             <Col xxl={1} sm={4}>
@@ -405,18 +417,24 @@ const TicketsListGlobalFilter = () => {
 };
 
 const NFTRankingGlobalFilter = () => {
+    const rangeOptions = [
+        { value: "all-time", label: "All Time" },
+        { value: "1-day", label: "1 Day" },
+        { value: "7-days", label: "7 Days" },
+        { value: "15-days", label: "15 Days" },
+        { value: "1-month", label: "1 Month" },
+        { value: "6-months", label: "6 Months" },
+    ];
+
     return (
         <React.Fragment>
             <Col xxl={2} sm={4} className="ms-auto">
                 <div>
-                    <select className="form-control" data-choices data-choices-search-false name="choices-single-default" id="idStatus">
-                        <option value="All Time" defaultValue>All Time</option>
-                        <option value="1 Day">1 Day</option>
-                        <option value="7 Days">7 Days</option>
-                        <option value="15 Days">15 Days</option>
-                        <option value="1 Month">1 Month</option>
-                        <option value="6 Month">6 Month</option>
-                    </select>
+                    <AppSelect
+                        options={rangeOptions}
+                        placeholder="Select time range"
+                        isSearchable={false}
+                    />
                 </div>
             </Col>
         </React.Fragment>
@@ -424,6 +442,14 @@ const NFTRankingGlobalFilter = () => {
 };
 
 const TaskListGlobalFilter = () => {
+    const statusOptions = [
+        { value: "all", label: "All" },
+        { value: "new", label: "New" },
+        { value: "pending", label: "Pending" },
+        { value: "inprogress", label: "In Progress" },
+        { value: "completed", label: "Completed" },
+    ];
+
     return (
         <React.Fragment>
             <div className="col-xxl-3 col-sm-4">
@@ -439,14 +465,11 @@ const TaskListGlobalFilter = () => {
 
             <div className="col-xxl-3 col-sm-4">
                 <div className="input-light">
-                    <select className="form-control" data-choices data-choices-search-false name="status" id="idStatus">
-                        <option value="">Status</option>
-                        <option defaultValue="all"  >All</option>
-                        <option value="New">New</option>
-                        <option value="Pending">Pending</option>
-                        <option value="Inprogress">Inprogress</option>
-                        <option value="Completed">Completed</option>
-                    </select>
+                    <AppSelect
+                        options={statusOptions}
+                        placeholder="Select status"
+                        isSearchable={false}
+                    />
                 </div>
             </div>
             <div className="col-xxl-1 col-sm-4">

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import DataTable from "react-data-table-component";
+import DataTable from "../../Components/Common/AppDataTable";
 import {
   Badge,
   Button,
@@ -25,9 +25,11 @@ import { useDispatch, useSelector } from "react-redux";
 import { useFormik } from "formik";
 import * as Yup from "yup";
 import { ToastContainer } from "react-toastify";
+import { RiDeleteBinLine, RiPencilLine } from "react-icons/ri";
 import BreadCrumb from "../../Components/Common/BreadCrumb";
 import DeleteModal from "../../Components/Common/DeleteModal";
 import Loader from "../../Components/Common/Loader";
+import ActionIconButton from "../../Components/Common/ActionIconButton";
 import {
   createUtilityUsage as onCreateUtilityType,
   deleteUtilityUsage as onDeleteUtilityType,
@@ -180,29 +182,25 @@ const UtilityUsages = () => {
       {
         name: "Actions",
         cell: (row) => (
-          <div className="d-flex gap-1">
-            <Button
-              color="outline-primary"
-              size="sm"
-              className="btn-icon"
+          <div className="d-flex gap-2">
+            <ActionIconButton
+              id={`edit-usage-type-${row._id}`}
+              icon={<RiPencilLine size={16} />}
+              tooltip="Edit Usage Type"
               onClick={() => {
                 setSelectedType(row);
                 setModal(true);
               }}
-            >
-              <i className="ri-pencil-line" />
-            </Button>
-            <Button
-              color="outline-danger"
-              size="sm"
-              className="btn-icon"
+            />
+            <ActionIconButton
+              id={`delete-usage-type-${row._id}`}
+              icon={<RiDeleteBinLine size={16} />}
+              tooltip="Delete Usage Type"
               onClick={() => {
                 setSelectedType(row);
                 setDeleteModal(true);
               }}
-            >
-              <i className="ri-delete-bin-line" />
-            </Button>
+            />
           </div>
         ),
       },

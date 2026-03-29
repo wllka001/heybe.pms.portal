@@ -1,7 +1,5 @@
 import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import axios from "axios";
-import { api } from "../config";
 const Navdata = () => {
   const history = useNavigate();
   const location = useLocation();
@@ -25,6 +23,21 @@ const Navdata = () => {
       });
     }
   }
+
+  const buildCollapsibleMenu = ({ id, label, icon, subItems }) => ({
+    id,
+    label,
+    icon,
+    link: "/#",
+    stateVariables: menuStates[id] || false,
+    click: function (e) {
+      e.preventDefault();
+      setMenuStates((prev) => ({ ...prev, [id]: !prev[id] }));
+      setIscurrentState(id);
+      updateIconSidebar(e);
+    },
+    subItems,
+  });
   // Function to collect all permitted paths from menus
   const getAllPermittedPaths = (menus) => {
     const paths = [];
@@ -96,80 +109,141 @@ const Navdata = () => {
   // Static full-access menu for superadmin
   const menuItems = [
     {
+      id: "MAIN_HEADER",
+      label: "Main",
+      isHeader: true,
+    },
+    {
       id: "DASHBOARD",
       label: "Dashboard",
       icon: "ri-dashboard-2-line",
       link: "/dashboard",
     },
     {
-      id: "EMPLOYEES",
-      label: "Employees",
-      icon: "ri-user-line",
-      link: "/employees",
+      id: "OPERATIONS_HEADER",
+      label: "Operations",
+      isHeader: true,
     },
-    {
-      id: "TENANTS",
-      label: "Tenants",
-      icon: "ri-user-line",
-      link: "/tenants",
-    },
-
-    {
-      id: "UNITS",
-      label: "Units",
-      icon: "ri-home-5-line",
-      link: "/units",
-    },
-
-    {
-      id: "MAINTENANCE",
-      label: "Maintenance",
+    buildCollapsibleMenu({
+      id: "PEOPLE_OPERATIONS",
+      label: "People & Leasing",
+      icon: "ri-team-line",
+      subItems: [
+        {
+          id: "EMPLOYEES",
+          label: "Employees",
+          link: "/employees",
+          parentId: "PEOPLE_OPERATIONS",
+        },
+        {
+          id: "TENANTS",
+          label: "Tenants",
+          link: "/tenants",
+          parentId: "PEOPLE_OPERATIONS",
+        },
+        {
+          id: "LEASES",
+          label: "Leases",
+          link: "/leases",
+          parentId: "PEOPLE_OPERATIONS",
+        },
+      ],
+    }),
+    buildCollapsibleMenu({
+      id: "PROPERTY_OPERATIONS",
+      label: "Property Ops",
       icon: "ri-tools-line",
-      link: "/maintenance",
-    },
+      subItems: [
+        {
+          id: "MAINTENANCE",
+          label: "Maintenance",
+          link: "/maintenance",
+          parentId: "PROPERTY_OPERATIONS",
+        },
+        {
+          id: "VENDORS",
+          label: "Vendors",
+          link: "/maintenance/vendors",
+          parentId: "PROPERTY_OPERATIONS",
+        },
+      ],
+    }),
     {
-      id: "VENDORS",
-      label: "Vendors",
-      icon: "ri-store-2-line",
-      link: "/maintenance/vendors",
+      id: "PORTFOLIO_HEADER",
+      label: "Portfolio",
+      isHeader: true,
     },
-
-    {
-      id: "LEASES",
-      label: "Leases",
-      icon: "ri-file-list-2-line",
-      link: "/leases",
-    },
-    {
-      id: "UTILITY-USAGES",
-      label: "Utility Types",
-      icon: "ri-flashlight-line",
-      link: "/utility-usages",
-    },
-    {
-      id: "ORGANIZATION",
-      label: "Organization",
+    buildCollapsibleMenu({
+      id: "PROPERTY_SETUP",
+      label: "Property Setup",
       icon: "ri-building-line",
-      link: "/organization",
-    },
+      subItems: [
+        {
+          id: "ORGANIZATION",
+          label: "Organization",
+          link: "/organization",
+          parentId: "PROPERTY_SETUP",
+        },
+        {
+          id: "BUILDINGS",
+          label: "Buildings",
+          link: "/buildings",
+          parentId: "PROPERTY_SETUP",
+        },
+        {
+          id: "UNITS",
+          label: "Units",
+          link: "/units",
+          parentId: "PROPERTY_SETUP",
+        },
+        {
+          id: "UTILITY-USAGES",
+          label: "Utility Types",
+          link: "/utility-usages",
+          parentId: "PROPERTY_SETUP",
+        },
+      ],
+    }),
     {
-      id: "BUILDINGS",
-      label: "Buildings",
-      icon: "ri-building-line",
-      link: "/buildings",
+      id: "FINANCE_HEADER",
+      label: "Finance & Reports",
+      isHeader: true,
     },
-    {
+    buildCollapsibleMenu({
+      id: "FINANCE",
+      label: "Finance",
+      icon: "ri-bank-card-line",
+      subItems: [
+        {
+          id: "EXPENSES",
+          label: "Expenses",
+          link: "/finance/expenses",
+          parentId: "FINANCE",
+        },
+        {
+          id: "INVOICES",
+          label: "Invoices",
+          link: "/finance/invoices",
+          parentId: "FINANCE",
+        },
+        {
+          id: "PAYMENTS",
+          label: "Payments",
+          link: "/finance/payments",
+          parentId: "FINANCE",
+        },
+        {
+          id: "UTILITY-BILLS",
+          label: "Utility Bills",
+          link: "/finance/utility-bills",
+          parentId: "FINANCE",
+        },
+      ],
+    }),
+    buildCollapsibleMenu({
       id: "REPORTS",
       label: "Reports",
       icon: "ri-bar-chart-grouped-line",
-      link: "/#",
-      stateVariables: menuStates["REPORTS"] || false,
-      click: function (e) {
-        e.preventDefault();
-        setMenuStates((prev) => ({ ...prev, REPORTS: !prev.REPORTS }));
-        setIscurrentState("REPORTS");
-        updateIconSidebar(e);
-      },
       subItems: [
         {
           id: "REPORTS_OVERVIEW",
@@ -220,49 +294,7 @@ const Navdata = () => {
           parentId: "REPORTS",
         },
       ],
-    },
-
-
-    {
-      id: "FINANCE",
-      label: "Finance",
-      icon: "ri-file-list-2-line",
-      link: "/#",
-      stateVariables: menuStates["FINANCE"] || false,
-      click: function (e) {
-        e.preventDefault();
-        setMenuStates((prev) => ({ ...prev, FINANCE: !prev.FINANCE }));
-        setIscurrentState("FINANCE");
-        updateIconSidebar(e);
-      },
-      subItems: [
-        {
-          id: "EXPENSES",
-          label: "Expenses",
-          link: "/finance/expenses",
-          parentId: "FINANCE",
-        },
-        {
-          id: "INVOICES",
-          label: "Invoices",
-          link: "/finance/invoices",
-          parentId: "FINANCE",
-        },
-        {
-          id: "PAYMENTS",
-          label: "Payments",
-          link: "/finance/payments",
-          parentId: "FINANCE",
-        },
-        {
-          id: "UTILITY-BILLS",
-          label: "Utility Bills",
-          link: "/finance/utility-bills",
-          parentId: "FINANCE",
-        },
-      ],
-    },
-
+    }),
   ];
   const dynamicMenu = retreivedMenus.map((item) => {
     const menuItem = {
