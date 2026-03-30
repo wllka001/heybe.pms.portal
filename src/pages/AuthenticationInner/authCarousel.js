@@ -59,26 +59,24 @@ const AuthSlider = () => {
               >
                 <div className="carousel-inner text-center text-white-50 pb-5">
                   <div className="item">
-                    <p className="fs-15 fst-italic">
-                      " A smart platform that helps restaurants reduce food
-                      waste by selling surplus meals at discounted prices. "
-                    </p>
+                   <p className="fs-15 fst-italic">
+  " A smart platform that helps property managers efficiently manage rentals, tenants, and maintenance in one place. "
+</p>
+
                   </div>
                 </div>
                 <div className="carousel-inner text-center text-white-50 pb-5">
                   <div className="item">
-                    <p className="fs-15 fst-italic">
-                      " Restaurants list unsold, perfectly good food near
-                      closing time, and customers buy it for less. "
-                    </p>
+                 <p className="fs-15 fst-italic">
+  " Property owners can track payments, monitor occupancy, and handle tenant requests with ease. "
+</p>
                   </div>
                 </div>
                 <div className="carousel-inner text-center text-white-50 pb-5">
                   <div className="item">
-                    <p className="fs-15 fst-italic">
-                      " Focused exclusively on restaurant food to keep surplus
-                      management simple, fast, and profitable. "
-                    </p>
+                  <p className="fs-15 fst-italic">
+  " Designed to simplify property operations, improve tenant satisfaction, and maximize rental income. "
+</p>
                   </div>
                 </div>
               </Carousel>
