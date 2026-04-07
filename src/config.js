@@ -9,10 +9,10 @@ module.exports = {
   },
   api: {
     //LOCAL CONNECTION
-    API_URL: "http://localhost:4020/api/v1",
+    // API_URL: "http://localhost:4020/api/v1",
 
     // PRODUCTION CONNECTION
-    // API_URL: "https://apartment-api-production.up.railway.app/api/v1",
+    API_URL: "https://apartment-api-production.up.railway.app/api/v1",
 
 
   }
