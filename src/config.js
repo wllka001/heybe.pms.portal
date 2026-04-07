@@ -9,10 +9,10 @@ module.exports = {
   },
   api: {
     //LOCAL CONNECTION
-    // API_URL: "http://localhost:4020/api/v1",
+    API_URL: "http://localhost:4020/api/v1",
 
     // PRODUCTION CONNECTION
-    API_URL: "https://pms-api-3t5n.onrender.com/api/v1",
+    // API_URL: "https://pms-api-3t5n.onrender.com/api/v1",
 
 
   }
