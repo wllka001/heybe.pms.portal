@@ -67,7 +67,6 @@ const MaintenanceVendors = () => {
   const formik = useFormik({
     enableReinitialize: true,
     initialValues: {
-      vendorCode: selectedVendor?.vendorCode || "",
       name: selectedVendor?.name || "",
       category: selectedVendor?.category || "general",
       specialties: Array.isArray(selectedVendor?.specialties)
@@ -87,7 +86,6 @@ const MaintenanceVendors = () => {
       },
     },
     validationSchema: Yup.object({
-      vendorCode: Yup.string().required("Vendor code is required"),
       name: Yup.string().required("Vendor name is required"),
       category: Yup.string().required("Category is required"),
       contact: Yup.object({
@@ -97,7 +95,6 @@ const MaintenanceVendors = () => {
     }),
     onSubmit: async (values, { setSubmitting, resetForm }) => {
       const payload = {
-        vendorCode: values.vendorCode.trim(),
         name: values.name.trim(),
         category: values.category,
         specialties: values.specialties
@@ -135,6 +132,13 @@ const MaintenanceVendors = () => {
 
   const columns = useMemo(
     () => [
+
+      {
+
+        name: "#",
+        cell: (row, index) => <span>{index + 1}</span>
+      },
+
       {
         name: "Vendor",
         grow: 2,
@@ -147,7 +151,7 @@ const MaintenanceVendors = () => {
       },
       {
         name: "Category",
-        cell: (row) => <Badge color="light" className="text-capitalize">{row.category}</Badge>,
+        cell: (row) => <Badge color="primary" className="text-capitalize">{row.category}</Badge>,
       },
       {
         name: "Contact",
@@ -220,20 +224,7 @@ const MaintenanceVendors = () => {
         <Form onSubmit={formik.handleSubmit}>
           <ModalBody>
             <Row>
-              <Col md={6}>
-                <FormGroup>
-                  <Label className="form-label">Vendor Code *</Label>
-                  <Input
-                    name="vendorCode"
-                    value={formik.values.vendorCode}
-                    onChange={formik.handleChange}
-                    onBlur={formik.handleBlur}
-                    invalid={formik.touched.vendorCode && !!formik.errors.vendorCode}
-                  />
-                  <FormFeedback>{formik.errors.vendorCode}</FormFeedback>
-                </FormGroup>
-              </Col>
-              <Col md={6}>
+              <Col md={12}>
                 <FormGroup>
                   <Label className="form-label">Name *</Label>
                   <Input

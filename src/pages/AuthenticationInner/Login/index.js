@@ -48,7 +48,7 @@ const SingIn = (props) => {
     useEffect(() => {
         if (user && user) {
             setUserLogin({
-                email: "",
+                identifier: "",
                 password: ""
             });
         }
@@ -57,11 +57,11 @@ const SingIn = (props) => {
     const validation = useFormik({
         enableReinitialize: true,
         initialValues: {
-            email: userLogin.email || '',
+            identifier: userLogin.identifier || '',
             password: userLogin.password || '',
         },
         validationSchema: Yup.object({
-            email: Yup.string().required("Please Enter Your email"),
+            identifier: Yup.string().required("Please Enter Your Username or Email"),
             password: Yup.string().required("Please Enter Your Password"),
         }),
         onSubmit: (values) => {
@@ -109,19 +109,19 @@ const SingIn = (props) => {
                                                         action="#">
 
                                                         <div className="mb-3">
-                                                            <Label htmlFor="email" className="form-label">email</Label>
-                                                            <Input type="text" className="form-control" id="email" placeholder="Enter email"
-
+                                                            <Label htmlFor="identifier" className="form-label">Username or Email</Label>
+                                                            <Input type="text" className="form-control" id="identifier" placeholder="Enter Username or Email"
+                                                                name="identifier"
                                                                 onChange={validation.handleChange}
                                                                 onBlur={validation.handleBlur}
-                                                                value={validation.values.email || ""}
+                                                                value={validation.values.identifier || ""}
                                                                 invalid={
-                                                                    validation.touched.email && validation.errors.email ? true : false
+                                                                    validation.touched.identifier && validation.errors.identifier ? true : false
                                                                 }
                                                             />
 
-                                                            {validation.touched.email && validation.errors.email ? (
-                                                                <FormFeedback type="invalid">{validation.errors.email}</FormFeedback>
+                                                            {validation.touched.identifier && validation.errors.identifier ? (
+                                                                <FormFeedback type="invalid">{validation.errors.identifier}</FormFeedback>
                                                             ) : null}
                                                         </div>
 

@@ -170,7 +170,6 @@ const Maintenance = () => {
 
   const formik = useFormik({
     initialValues: {
-      requestNumber: "",
       buildingId: "",
       unitId: "",
       tenantId: "",
@@ -183,7 +182,6 @@ const Maintenance = () => {
       status: "pending",
     },
     validationSchema: Yup.object({
-      requestNumber: Yup.string().required("Request number is required"),
       buildingId: Yup.string().required("Building is required"),
       unitId: Yup.string().required("Unit is required"),
       issue: Yup.object({
@@ -194,7 +192,6 @@ const Maintenance = () => {
     }),
     onSubmit: async (values, { setSubmitting, resetForm }) => {
       const payload = {
-        requestNumber: values.requestNumber.trim(),
         buildingId: values.buildingId,
         unitId: values.unitId,
         tenantId: values.tenantId || undefined,
@@ -280,39 +277,51 @@ const Maintenance = () => {
           options={statusOptions.filter((x) => x.value !== "all")}
           value={statusOptions.find((x) => x.value === row.status)}
           onChange={async (opt) => {
-            await dispatch(onUpdateMaintenanceStatus({ id: row._id, status: opt?.value }));
+            if (!opt) return;
+            await dispatch(onUpdateMaintenanceStatus({ id: row._id, status: opt.value }));
             fetchRequests();
           }}
           classNamePrefix="select"
           menuPortalTarget={document.body}
-          styles={{ menuPortal: (base) => ({ ...base, zIndex: 9999 }) }}
+          styles={{ 
+            menuPortal: (base) => ({ ...base, zIndex: 9999 }),
+            control: (base) => ({
+              ...base,
+              borderColor: 'transparent',
+              backgroundColor: 'transparent',
+              boxShadow: 'none',
+              cursor: 'pointer'
+            }),
+          }}
         />
       ),
       grow: 2,
     },
     {
       name: "Actions",
+      width: "180px",
       cell: (row) => (
         <div className="d-flex gap-2">
-          <ActionIconButton
-            id={`assign-maintenance-${row._id}`}
-            icon={<RiUserSettingsLine size={16} />}
-            tooltip="Assign"
+          <Button
+            size="sm"
+            color="primary"
+            className="btn-soft-primary"
             onClick={() => {
               setSelectedRequest(row);
               setAssignData({
-                assignedToId:
-                  typeof row.assignedToId === "object" ? row.assignedToId?._id || "" : row.assignedToId || "",
+                assignedToId: typeof row.assignedToId === "object" ? row.assignedToId?._id || "" : row.assignedToId || "",
                 vendorId: typeof row.vendorId === "object" ? row.vendorId?._id || "" : row.vendorId || "",
                 status: row.status === "in_progress" ? "in_progress" : "assigned",
               });
               setAssignModal(true);
             }}
-          />
+          >
+            Assign
+          </Button>
           <ActionIconButton
             id={`cost-maintenance-${row._id}`}
             icon={<RiMoneyDollarCircleLine size={16} />}
-            tooltip="Update Cost"
+            tooltip="Cost"
             onClick={() => {
               setSelectedRequest(row);
               setCostData({
@@ -327,7 +336,7 @@ const Maintenance = () => {
           <ActionIconButton
             id={`attachment-maintenance-${row._id}`}
             icon={<RiAttachment2 size={16} />}
-            tooltip="Manage Attachment"
+            tooltip="Files"
             onClick={() => {
               setSelectedRequest(row);
               setAttachmentData({ type: "document", note: "", file: null });
@@ -419,20 +428,7 @@ const Maintenance = () => {
         <Form onSubmit={formik.handleSubmit}>
           <ModalBody>
             <Row>
-              <Col md={6}>
-                <FormGroup>
-                  <Label className="form-label">Request Number *</Label>
-                  <Input
-                    name="requestNumber"
-                    value={formik.values.requestNumber}
-                    onChange={formik.handleChange}
-                    onBlur={formik.handleBlur}
-                    invalid={formik.touched.requestNumber && !!formik.errors.requestNumber}
-                  />
-                  <FormFeedback>{formik.errors.requestNumber}</FormFeedback>
-                </FormGroup>
-              </Col>
-              <Col md={6}>
+              <Col md={12}>
                 <FormGroup>
                   <Label className="form-label">Status</Label>
                   <Select

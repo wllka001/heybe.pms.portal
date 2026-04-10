@@ -184,13 +184,16 @@ const Buildings = () => {
             .max(20, 'Unit code prefix must not exceed 20 characters'),
         unitCodeLength: Yup.number()
             .transform((value, originalValue) => originalValue === '' ? undefined : value)
-            .min(1, 'Unit code length must be at least 1')
+            // .min(1, 'Unit code length must be at least 1')
             .integer('Unit code length must be a whole number'),
+        unitCodeGenerationMode: Yup.string()
+            .oneOf(['AUTO', 'MANUAL'], 'Invalid generation mode')
+            .required('Generation mode is required'),
         tenantCodePrefix: Yup.string()
             .max(20, 'Tenant code prefix must not exceed 20 characters'),
         tenantCodeLength: Yup.number()
             .transform((value, originalValue) => originalValue === '' ? undefined : value)
-            .min(1, 'Tenant code length must be at least 1')
+            // .min(1, 'Tenant code length must be at least 1')
             .integer('Tenant code length must be a whole number'),
         amenities: Yup.array().of(Yup.string()),
         isActive: Yup.boolean()
@@ -225,6 +228,7 @@ const Buildings = () => {
             },
             unitCodePrefix: selectedBuilding?.unitCodePrefix || '',
             unitCodeLength: selectedBuilding?.unitCodeLength ?? '',
+            unitCodeGenerationMode: selectedBuilding?.unitCodeGenerationMode || 'AUTO',
             tenantCodePrefix: selectedBuilding?.tenantCodePrefix || '',
             tenantCodeLength: selectedBuilding?.tenantCodeLength ?? '',
             amenities: selectedBuilding?.amenities || [],
@@ -811,37 +815,56 @@ const Buildings = () => {
 
                                     <div className="text-muted small fw-semibold text-uppercase mt-4 mb-3">Auto Code Settings</div>
                                     <Row className="g-3">
-                                        <Col md={6}>
+                                        <Col md={12} className="mb-3">
                                             <FormGroup className="mb-0">
-                                                <Label className="form-label">Unit Code Prefix</Label>
-                                                <Input
-                                                    name="unitCodePrefix"
-                                                    value={formik.values.unitCodePrefix}
-                                                    onChange={formik.handleChange}
-                                                    onBlur={formik.handleBlur}
-                                                    invalid={formik.touched.unitCodePrefix && !!formik.errors.unitCodePrefix}
-                                                    placeholder="e.g., U"
-                                                    className="form-control-lg"
-                                                />
-                                                <FormFeedback>{formik.errors.unitCodePrefix}</FormFeedback>
+                                                <Label className="form-label">Unit Code Generation Mode</Label>
+                                                <div className="d-flex gap-4 mt-2">
+                                                    <div className="form-check">
+                                                        <Input type="radio" name="unitCodeGenerationMode" value="AUTO" checked={formik.values.unitCodeGenerationMode === 'AUTO'} onChange={() => formik.setFieldValue('unitCodeGenerationMode', 'AUTO')} />
+                                                        <Label className="form-check-label ps-1">AUTO</Label>
+                                                    </div>
+                                                    <div className="form-check">
+                                                        <Input type="radio" name="unitCodeGenerationMode" value="MANUAL" checked={formik.values.unitCodeGenerationMode === 'MANUAL'} onChange={() => formik.setFieldValue('unitCodeGenerationMode', 'MANUAL')} />
+                                                        <Label className="form-check-label ps-1">MANUAL</Label>
+                                                    </div>
+                                                </div>
                                             </FormGroup>
                                         </Col>
-                                        <Col md={6}>
-                                            <FormGroup className="mb-0">
-                                                <Label className="form-label">Unit Code Length</Label>
-                                                <Input
-                                                    type="number"
-                                                    name="unitCodeLength"
-                                                    value={formik.values.unitCodeLength}
-                                                    onChange={formik.handleChange}
-                                                    onBlur={formik.handleBlur}
-                                                    invalid={formik.touched.unitCodeLength && !!formik.errors.unitCodeLength}
-                                                    placeholder="e.g., 3"
-                                                    className="form-control-lg"
-                                                />
-                                                <FormFeedback>{formik.errors.unitCodeLength}</FormFeedback>
-                                            </FormGroup>
-                                        </Col>
+                                        {formik.values.unitCodeGenerationMode === 'AUTO' && (
+                                            <>
+                                                <Col md={6}>
+                                                    <FormGroup className="mb-0">
+                                                        <Label className="form-label">Unit Code Prefix</Label>
+                                                        <Input
+                                                            name="unitCodePrefix"
+                                                            value={formik.values.unitCodePrefix}
+                                                            onChange={formik.handleChange}
+                                                            onBlur={formik.handleBlur}
+                                                            invalid={formik.touched.unitCodePrefix && !!formik.errors.unitCodePrefix}
+                                                            placeholder="e.g., U"
+                                                            className="form-control-lg"
+                                                        />
+                                                        <FormFeedback>{formik.errors.unitCodePrefix}</FormFeedback>
+                                                    </FormGroup>
+                                                </Col>
+                                                <Col md={6}>
+                                                    <FormGroup className="mb-0">
+                                                        <Label className="form-label">Unit Code Length</Label>
+                                                        <Input
+                                                            type="number"
+                                                            name="unitCodeLength"
+                                                            value={formik.values.unitCodeLength}
+                                                            onChange={formik.handleChange}
+                                                            onBlur={formik.handleBlur}
+                                                            invalid={formik.touched.unitCodeLength && !!formik.errors.unitCodeLength}
+                                                            placeholder="e.g., 3"
+                                                            className="form-control-lg"
+                                                        />
+                                                        <FormFeedback>{formik.errors.unitCodeLength}</FormFeedback>
+                                                    </FormGroup>
+                                                </Col>
+                                            </>
+                                        )}
                                         <Col md={6}>
                                             <FormGroup className="mb-0">
                                                 <Label className="form-label">Tenant Code Prefix</Label>

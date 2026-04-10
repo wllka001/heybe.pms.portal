@@ -574,9 +574,7 @@ const UtilityBills = () => {
               <FormGroup>
                 <Label className="form-label text-muted small mb-1">Rate Per Unit</Label>
                 <Input
-                  type="number"
-                  min="0"
-                  value={row.ratePerUnit}
+                  type="number" min="0" step="any" value={row.ratePerUnit}
                   readOnly={rateLocked}
                   disabled={rateLocked}
                   onChange={(e) => updateDraftRow(row.localId, "ratePerUnit", e.target.value)}
@@ -590,9 +588,7 @@ const UtilityBills = () => {
               <FormGroup>
                 <Label className="form-label text-muted small mb-1">Fixed Amount</Label>
                 <Input
-                  type="number"
-                  min="0"
-                  value={row.fixedAmount}
+                  type="number" min="0" step="any" value={row.fixedAmount}
                   readOnly={fixedLocked}
                   disabled={fixedLocked}
                   onChange={(e) => updateDraftRow(row.localId, "fixedAmount", e.target.value)}
@@ -1352,7 +1348,7 @@ export default UtilityBills;
 //             <Col md={4}>
 //               <FormGroup>
 //                 <Label className="form-label">Rate Per Unit</Label>
-//                 <Input type="number" min="0" value={row.ratePerUnit} readOnly={rateLocked} disabled={rateLocked} onChange={(e) => updateDraftRow(row.localId, "ratePerUnit", e.target.value)} />
+//                 <Input type="number" min="0" step="any" value={row.ratePerUnit} readOnly={rateLocked} disabled={rateLocked} onChange={(e) => updateDraftRow(row.localId, "ratePerUnit", e.target.value)} />
 //               </FormGroup>
 //             </Col>
 //           )}
@@ -1360,7 +1356,7 @@ export default UtilityBills;
 //             <Col md={4}>
 //               <FormGroup>
 //                 <Label className="form-label">Fixed Amount</Label>
-//                 <Input type="number" min="0" value={row.fixedAmount} readOnly={fixedLocked} disabled={fixedLocked} onChange={(e) => updateDraftRow(row.localId, "fixedAmount", e.target.value)} />
+//                 <Input type="number" min="0" step="any" value={row.fixedAmount} readOnly={fixedLocked} disabled={fixedLocked} onChange={(e) => updateDraftRow(row.localId, "fixedAmount", e.target.value)} />
 //               </FormGroup>
 //             </Col>
 //           )}

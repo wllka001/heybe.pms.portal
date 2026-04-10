@@ -636,7 +636,7 @@ const UtilityBillsReport = () => {
                     <>
                         {/* Summary Stats Cards */}
                         <Row className="mb-4">
-                            <Col lg={3} md={6} className="mb-3">
+                            <Col lg={6} md={6} className="mb-3">
                                 <StatCard
                                     icon={FiDollarSign}
                                     title="Total Amount"
@@ -645,7 +645,7 @@ const UtilityBillsReport = () => {
                                     subtitle={`${reportData.summary?.billedCount || 0} bills billed`}
                                 />
                             </Col>
-                            <Col lg={3} md={6} className="mb-3">
+                            {/* <Col lg={3} md={6} className="mb-3">
                                 <StatCard
                                     icon={FiTrendingUp}
                                     title="Total Consumption"
@@ -662,8 +662,8 @@ const UtilityBillsReport = () => {
                                     color="warning"
                                     subtitle="Tax collected"
                                 />
-                            </Col>
-                            <Col lg={3} md={6} className="mb-3">
+                            </Col> */}
+                            <Col lg={6} md={6} className="mb-3">
                                 <StatCard
                                     icon={FiActivity}
                                     title="Billing Rate"

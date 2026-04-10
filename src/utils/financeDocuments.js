@@ -128,16 +128,16 @@ export const downloadInvoicePdf = async ({ invoice, lease, buildingLabel }) => {
   doc.text(`${invoice?.period?.year}-${String(invoice?.period?.month || "").padStart(2, "0")}`, 16, y + 6);
   doc.text(formatDate(invoice?.period?.dueDate), 100, y + 6);
 
-  y = 118;
+  y = 108;
   doc.setFillColor(16, 61, 104);
-  doc.rect(16, y, 178, 9, "F");
+  doc.rect(16, y, 178, 10, "F");
   doc.setTextColor(255, 255, 255);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(9);
-  doc.text("Description", 20, y + 6);
-  doc.text("Qty", 122, y + 6, { align: "right" });
-  doc.text("Rate", 152, y + 6, { align: "right" });
-  doc.text("Amount", 190, y + 6, { align: "right" });
+  doc.text("Description", 20, y + 6.5);
+  doc.text("Qty", 122, y + 6.5, { align: "right" });
+  doc.text("Rate", 152, y + 6.5, { align: "right" });
+  doc.text("Total", 190, y + 6.5, { align: "right" });
 
   y += 14;
   doc.setTextColor(30, 41, 59);
@@ -199,11 +199,33 @@ export const downloadInvoicePdf = async ({ invoice, lease, buildingLabel }) => {
     doc.text(formatCurrency(invoice?.balance || 0), 190, y, { align: "right" });
   }
 
+  y += 15;
+  if (y > 250) {
+    doc.addPage();
+    y = 20;
+  }
+  
+  doc.setDrawColor(226, 232, 240);
+  doc.line(16, y, 194, y);
+  y += 8;
+
+  doc.setTextColor(16, 61, 104);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  doc.text("Payment Instructions", 16, y);
+  y += 6;
   doc.setTextColor(100, 116, 139);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8);
-  doc.text("Thank you for your business.", 16, 286);
-  doc.text(`Generated ${formatDate(new Date())}`, 194, 286, { align: "right" });
+  doc.text("Please make payments via the tenant portal or at the building management office.", 16, y);
+  doc.text("Late payments may incur additional charges as per your lease agreement.", 16, y + 4);
+
+  doc.setTextColor(100, 116, 139);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
+  doc.text("This is a computer generated invoice and does not require a physical signature.", 105, 280, { align: "center" });
+  doc.text(`Generated on ${formatDate(new Date())}`, 105, 284, { align: "center" });
+  
   doc.save(`${invoice?.invoiceNumber || "invoice"}.pdf`);
 };
 

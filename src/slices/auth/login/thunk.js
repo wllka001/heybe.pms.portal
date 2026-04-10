@@ -13,7 +13,7 @@ export const loginUser = (user, history) => async (dispatch) => {
   try {
     dispatch(loginStart());
     const response = login({
-      email: user.email,
+      identifier: user.identifier,
       password: user.password,
     });
     let data = await response;

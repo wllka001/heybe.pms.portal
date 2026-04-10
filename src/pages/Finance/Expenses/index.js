@@ -243,7 +243,6 @@ const Expenses = () => {
 
   const expenseFormik = useFormik({
     initialValues: {
-      expenseNumber: generateExpenseNumber(),
       category: "salary",
       subCategory: "",
       description: "",
@@ -269,7 +268,6 @@ const Expenses = () => {
         await dispatch(
           onCreateExpense({
             data: {
-              expenseNumber: values.expenseNumber,
               category: values.category,
               subCategory: values.subCategory || undefined,
               description: values.description,
@@ -294,7 +292,6 @@ const Expenses = () => {
         setExpenseModal(false);
         resetForm({
           values: {
-            expenseNumber: generateExpenseNumber(),
             category: "salary",
             subCategory: "",
             description: "",
@@ -564,15 +561,6 @@ const Expenses = () => {
         <Form onSubmit={expenseFormik.handleSubmit}>
           <ModalBody className="p-4">
             <Row className="g-4">
-              <Col md={6}>
-                <Label className="form-label text-muted small mb-1">Expense Number</Label>
-                <Input
-                  name="expenseNumber"
-                  value={expenseFormik.values.expenseNumber}
-                  onChange={expenseFormik.handleChange}
-                  placeholder="Auto-generated expense number"
-                />
-              </Col>
               <Col md={6}>
                 <Label className="form-label text-muted small mb-1">Category *</Label>
                 <Select

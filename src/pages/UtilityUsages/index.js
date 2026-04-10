@@ -362,6 +362,7 @@ const UtilityUsages = () => {
                   <Input
                     type="number"
                     min="0"
+                    step="any"
                     name="defaults.ratePerUnit"
                     placeholder="Enter default rate"
                     value={formik.values.defaults.ratePerUnit}
@@ -375,6 +376,7 @@ const UtilityUsages = () => {
                   <Input
                     type="number"
                     min="0"
+                    step="any"
                     name="defaults.fixedMonthlyAmount"
                     placeholder="Enter fixed monthly amount"
                     value={formik.values.defaults.fixedMonthlyAmount}

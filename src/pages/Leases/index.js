@@ -186,7 +186,6 @@ const Leases = () => {
   const formik = useFormik({
     enableReinitialize: true,
     initialValues: {
-      leaseNumber: selectedLease?.leaseNumber || "",
       tenantId:
         typeof selectedLease?.tenantId === "object"
           ? selectedLease?.tenantId?._id || ""
@@ -221,7 +220,6 @@ const Leases = () => {
       },
     },
     validationSchema: Yup.object({
-      leaseNumber: Yup.string().required("Lease number is required"),
       tenantId: Yup.string().required("Tenant is required"),
       buildingId: Yup.string().required("Building is required"),
       unitId: Yup.string().required("Unit is required"),
@@ -236,7 +234,6 @@ const Leases = () => {
     }),
     onSubmit: async (values, { setSubmitting, resetForm }) => {
       const payload = {
-        leaseNumber: values.leaseNumber.trim(),
         tenantId: values.tenantId,
         buildingId: values.buildingId,
         unitId: values.unitId,
@@ -467,21 +464,7 @@ const Leases = () => {
         <Form onSubmit={formik.handleSubmit}>
           <ModalBody>
             <Row>
-              <Col md={6}>
-                <FormGroup>
-                  <Label className="form-label">Lease Number *</Label>
-                  <Input
-                    name="leaseNumber"
-                    placeholder="Enter lease number (e.g. LSE-0001)"
-                    value={formik.values.leaseNumber}
-                    onChange={formik.handleChange}
-                    onBlur={formik.handleBlur}
-                    invalid={formik.touched.leaseNumber && !!formik.errors.leaseNumber}
-                  />
-                  <FormFeedback>{formik.errors.leaseNumber}</FormFeedback>
-                </FormGroup>
-              </Col>
-              <Col md={6}>
+              <Col md={12}>
                 <FormGroup>
                   <Label className="form-label">Status</Label>
                   <Select

@@ -164,7 +164,7 @@ const Employees = () => {
       },
     },
     validationSchema: Yup.object({
-      employeeCode: Yup.string().required("Employee code is required"),
+      employeeCode: Yup.string().optional(),
       personalInfo: Yup.object({
         firstName: Yup.string().required("First name is required"),
         lastName: Yup.string().required("Last name is required"),
@@ -184,7 +184,7 @@ const Employees = () => {
     }),
     onSubmit: async (values, { setSubmitting, resetForm }) => {
       const payload = {
-        employeeCode: values.employeeCode.trim(),
+        employeeCode: values.employeeCode.trim() || undefined,
         primaryBuildingId: values.primaryBuildingId || undefined,
         personalInfo: {
           firstName: values.personalInfo.firstName.trim(),
@@ -413,21 +413,23 @@ const Employees = () => {
         <Form onSubmit={formik.handleSubmit}>
           <ModalBody>
             <Row>
-              <Col md={6}>
-                <FormGroup>
-                  <Label className="form-label">Employee Code *</Label>
-                  <Input
-                    name="employeeCode"
-                    placeholder="Enter employee code (e.g. EMP-001)"
-                    value={formik.values.employeeCode}
-                    onChange={formik.handleChange}
-                    onBlur={formik.handleBlur}
-                    invalid={formik.touched.employeeCode && !!formik.errors.employeeCode}
-                  />
-                  <FormFeedback>{formik.errors.employeeCode}</FormFeedback>
-                </FormGroup>
-              </Col>
-              <Col md={6}>
+              {selectedEmployee && (
+                <Col md={6}>
+                  <FormGroup>
+                    <Label className="form-label">Employee Code</Label>
+                    <Input
+                      name="employeeCode"
+                      placeholder="Enter employee code (e.g. EMP-001)"
+                      value={formik.values.employeeCode}
+                      onChange={formik.handleChange}
+                      onBlur={formik.handleBlur}
+                      invalid={formik.touched.employeeCode && !!formik.errors.employeeCode}
+                    />
+                    <FormFeedback>{formik.errors.employeeCode}</FormFeedback>
+                  </FormGroup>
+                </Col>
+              )}
+              <Col md={selectedEmployee ? 6 : 12}>
                 <FormGroup>
                   <Label className="form-label">Primary Building</Label>
                   <Select

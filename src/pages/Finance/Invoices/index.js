@@ -82,16 +82,18 @@ const StatCard = ({ icon: Icon, title, value, color, subtitle }) => (
 );
 
 // Invoice Detail Card Component
-const InvoiceDetailCard = ({ title, children, icon: Icon }) => (
-  <div className="border rounded-3 p-4 bg-white h-100">
-    <div className="d-flex align-items-center mb-3">
-      <div className="bg-primary bg-opacity-10 rounded-circle p-2 me-2">
-        <Icon size={16} className="text-primary" />
+const InvoiceDetailCard = ({ title, children, icon: Icon, color = "primary" }) => (
+  <Card className="border-0 shadow-sm h-100 overflow-hidden">
+    <div className={`bg-${color} bg-opacity-10 dark-bg-opacity-20 p-3 d-flex align-items-center border-bottom border-${color} border-opacity-10`}>
+      <div className={`bg-${color} bg-opacity-20 rounded-circle p-2 me-3`}>
+        <Icon size={18} className={`text-${color}`} />
       </div>
-      <h6 className="mb-0 fw-semibold">{title}</h6>
+      <h6 className="mb-0 fw-bold text-uppercase tracking-wider small">{title}</h6>
     </div>
-    {children}
-  </div>
+    <CardBody className="p-4">
+      {children}
+    </CardBody>
+  </Card>
 );
 
 const Invoices = () => {
@@ -613,23 +615,35 @@ const Invoices = () => {
               </InvoiceDetailCard>
             </Col>
             <Col md={4}>
-              <InvoiceDetailCard title="Rent Amount" icon={FiDollarSign}>
-                <div className="fs-4 fw-bold text-primary">{formatCurrency(selectedInvoice?.items?.rent?.amount || 0)}</div>
-                <div className="text-muted small">Base rent for the period</div>
+              <InvoiceDetailCard title="Rent Amount" icon={FiDollarSign} color="primary">
+                <div className="d-flex align-items-baseline gap-1">
+                  <span className="fs-5 text-muted">$</span>
+                  <span className="display-6 fw-bold text-primary">{Number(selectedInvoice?.items?.rent?.amount || 0).toLocaleString()}</span>
+                </div>
+                <div className="text-muted small mt-2">Base rent for current period</div>
               </InvoiceDetailCard>
             </Col>
             <Col md={4}>
-              <InvoiceDetailCard title="Utilities Total" icon={FiTrendingUp}>
-                <div className="fs-4 fw-bold text-info">{formatCurrency(selectedInvoice?.summary?.utilitiesSubtotal || 0)}</div>
-                <div className="text-muted small">From utility readings</div>
+              <InvoiceDetailCard title="Utilities" icon={FiTrendingUp} color="info">
+                <div className="d-flex align-items-baseline gap-1">
+                  <span className="fs-5 text-muted">$</span>
+                  <span className="display-6 fw-bold text-info">{Number(selectedInvoice?.summary?.utilitiesSubtotal || 0).toLocaleString()}</span>
+                </div>
+                <div className="text-muted small mt-2">Total utility consumption charges</div>
               </InvoiceDetailCard>
             </Col>
             <Col md={4}>
-              <InvoiceDetailCard title="Total Amount" icon={FiCheckCircle}>
-                <div className="fs-4 fw-bold text-success">{formatCurrency(selectedInvoice?.summary?.totalAmount || 0)}</div>
-                <Badge color={getStatusColor(selectedInvoice?.status)} className="mt-2">
-                  {selectedInvoice?.status?.toUpperCase() || "PENDING"}
-                </Badge>
+              <InvoiceDetailCard title="Grand Total" icon={FiCheckCircle} color="success">
+                <div className="d-flex align-items-baseline gap-1">
+                  <span className="fs-5 text-muted">$</span>
+                  <span className="display-6 fw-bold text-success">{Number(selectedInvoice?.summary?.totalAmount || 0).toLocaleString()}</span>
+                </div>
+                <div className="d-flex align-items-center justify-content-between mt-2 pt-2 border-top border-success border-opacity-10">
+                  <span className="text-muted small">Current Status</span>
+                  <Badge color={getStatusColor(selectedInvoice?.status)} className="px-3 py-1 text-uppercase tracking-wider">
+                    {selectedInvoice?.status?.replace("_", " ")}
+                  </Badge>
+                </div>
               </InvoiceDetailCard>
             </Col>
             <Col md={12}>

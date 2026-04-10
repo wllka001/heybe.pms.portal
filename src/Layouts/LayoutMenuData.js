@@ -245,12 +245,12 @@ const Navdata = () => {
       label: "Reports",
       icon: "ri-bar-chart-grouped-line",
       subItems: [
-        {
-          id: "REPORTS_OVERVIEW",
-          label: "Overview",
-          link: "/reports",
-          parentId: "REPORTS",
-        },
+        // {
+        //   id: "REPORTS_OVERVIEW",
+        //   label: "Overview",
+        //   link: "/reports",
+        //   parentId: "REPORTS",
+        // },
         {
           id: "UTILITY_BILLS_REPORT",
           label: "Utility Bills Report",

@@ -127,6 +127,7 @@ const numOrUndef = (value) => {
 const buildPayload = (values) => {
   const payload = {
     buildingId: values.buildingId,
+    code: values.code,
     floor: Number(values.floor),
     type: values.type,
     marketRent: Number(values.marketRent),
@@ -251,7 +252,7 @@ const Units = () => {
     enableReinitialize: true,
     initialValues: {
       buildingId: typeof selectedUnit?.buildingId === "object" ? selectedUnit?.buildingId?._id || "" : selectedUnit?.buildingId || "",
-      // unitNumber: selectedUnit?.unitNumber || "",
+      code: selectedUnit?.code || "",
       floor: selectedUnit?.floor ?? "",
       type: selectedUnit?.type || "",
       marketRent: selectedUnit?.marketRent ?? "",
@@ -507,7 +508,7 @@ const Units = () => {
           <CardHeader className="d-flex justify-content-between align-items-center bg-light">
             <h5 className="card-title mb-0 flex-grow-1"><i className="ri-home-5-line align-middle me-2"></i>Units List<Badge color="primary" className="ms-2">{pagination?.total || units.length}</Badge></h5>
             <div className="d-flex gap-2">
-              <Button color="info" onClick={() => setBulkModal(true)} className="shadow-sm"><i className="ri-file-upload-line me-1"></i>Bulk Upload</Button>
+              {/* <Button color="info" onClick={() => setBulkModal(true)} className="shadow-sm"><i className="ri-file-upload-line me-1"></i>Bulk Upload</Button> */}
               <Button color="primary" onClick={() => { setSelectedUnit(null); setModal(true); }} className="shadow-sm"><i className="ri-add-line me-1"></i>Unit</Button>
             </div>
           </CardHeader>
@@ -583,6 +584,15 @@ const Units = () => {
                   <FormFeedback>{formik.errors.floor}</FormFeedback>
                 </FormGroup>
               </Col>
+              {buildings.find((b) => b._id === formik.values.buildingId)?.unitCodeGenerationMode === 'MANUAL' && (
+                <Col lg={3} md={6}>
+                  <FormGroup className="mb-0">
+                    <Label className="form-label">Unit Code <span className="text-danger">*</span></Label>
+                    <Input name="code" value={formik.values.code} onChange={formik.handleChange} onBlur={formik.handleBlur} invalid={formik.touched.code && !!formik.errors.code} className="form-control-lg" />
+                    <FormFeedback>{formik.errors.code}</FormFeedback>
+                  </FormGroup>
+                </Col>
+              )}
               <Col lg={3} md={6}>
                 <FormGroup className="mb-0">
                   <Label className="form-label">Type <span className="text-danger">*</span></Label>
