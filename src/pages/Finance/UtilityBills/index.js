@@ -63,6 +63,7 @@ const createDraftRow = (overrides = {}) => ({
   previousDate: overrides.previousDate || new Date().toISOString().split("T")[0],
   currentDate: overrides.currentDate || new Date().toISOString().split("T")[0],
   notes: overrides.notes || "",
+  previousLocked: overrides.previousLocked || false,
 });
 
 // Utility Card Component for View Mode
@@ -361,6 +362,7 @@ const UtilityBills = () => {
             previousDate: reading.readings?.previous?.date?.split?.("T")?.[0] || new Date().toISOString().split("T")[0],
             currentDate: reading.readings?.current?.date?.split?.("T")?.[0] || new Date().toISOString().split("T")[0],
             notes: reading.readings?.current?.notes || "",
+            previousLocked: true,
           }),
           type,
         );
@@ -385,6 +387,93 @@ const UtilityBills = () => {
         return { ...row, [field]: value };
       }),
     );
+  };
+
+  const loadPreviousReading = async (leaseId, utilityTypeId) => {
+    if (!leaseId || !utilityTypeId) return null;
+    const res = await FinanceAPI.listReadings({
+      page: 1,
+      limit: 50,
+      leaseId,
+      utilityTypeId,
+    });
+
+    if (!res?.success) return null;
+
+    const currentPeriodKey = Number(billingYear) * 100 + Number(billingMonth);
+    const history = (res.data?.data || []).filter((reading) => {
+      const periodKey = Number(reading?.billingPeriod?.year || 0) * 100 + Number(reading?.billingPeriod?.month || 0);
+      return periodKey < currentPeriodKey;
+    });
+
+    if (!history.length) return null;
+
+    return history.sort((a, b) => {
+      const aKey = Number(a?.billingPeriod?.year || 0) * 100 + Number(a?.billingPeriod?.month || 0);
+      const bKey = Number(b?.billingPeriod?.year || 0) * 100 + Number(b?.billingPeriod?.month || 0);
+      return bKey - aKey;
+    })[0];
+  };
+
+  const handleUtilityTypeChange = async (row, utilityTypeId) => {
+    setDraftRows((prev) =>
+      prev.map((item) => {
+        if (item.localId !== row.localId) return item;
+        const type = utilityTypeMap.get(String(utilityTypeId));
+        return getConfiguredRow(
+          {
+            ...item,
+            utilityTypeId,
+            previousValue: "",
+            previousDate: new Date().toISOString().split("T")[0],
+            previousLocked: false,
+          },
+          type,
+        );
+      }),
+    );
+
+    if (!utilityTypeId || row.readingId || !selectedLeaseId) return;
+
+    try {
+      const latestReading = await loadPreviousReading(selectedLeaseId, utilityTypeId);
+      if (!latestReading) {
+        setDraftRows((prev) =>
+          prev.map((item) =>
+            item.localId === row.localId
+              ? { ...item, previousValue: "", previousDate: new Date().toISOString().split("T")[0], previousLocked: false }
+              : item,
+          ),
+        );
+        return;
+      }
+
+      setDraftRows((prev) =>
+        prev.map((item) => {
+          if (item.localId !== row.localId) return item;
+          return {
+            ...item,
+            previousValue:
+              latestReading?.readings?.current?.value ??
+              latestReading?.readings?.previous?.value ??
+              item.previousValue,
+            previousDate:
+              latestReading?.readings?.current?.date?.split?.("T")?.[0] ||
+              latestReading?.readings?.previous?.date?.split?.("T")?.[0] ||
+              item.previousDate,
+            previousLocked: true,
+          };
+        }),
+      );
+    } catch (_error) {
+      setDraftRows((prev) =>
+        prev.map((item) =>
+          item.localId === row.localId
+            ? { ...item, previousValue: "", previousDate: new Date().toISOString().split("T")[0], previousLocked: false }
+            : item,
+        ),
+      );
+    }
   };
 
   const addDraftRow = () => {
@@ -520,7 +609,7 @@ const UtilityBills = () => {
               <Select
                 options={utilityTypeOptions}
                 value={utilityTypeOptions.find((item) => item.value === row.utilityTypeId) || null}
-                onChange={(option) => updateDraftRow(row.localId, "utilityTypeId", option?.value || "")}
+                onChange={(option) => handleUtilityTypeChange(row, option?.value || "")}
                 placeholder="Select utility type"
                 classNamePrefix="select"
                 styles={selectStyles}
@@ -549,6 +638,8 @@ const UtilityBills = () => {
                   type="number"
                   min="0"
                   value={row.previousValue}
+                  readOnly={row.previousLocked}
+                  disabled={row.previousLocked}
                   onChange={(e) => updateDraftRow(row.localId, "previousValue", e.target.value)}
                   className="form-control"
                 />
@@ -604,6 +695,8 @@ const UtilityBills = () => {
                 <Input
                   type="date"
                   value={row.previousDate}
+                  readOnly={row.previousLocked}
+                  disabled={row.previousLocked}
                   onChange={(e) => updateDraftRow(row.localId, "previousDate", e.target.value)}
                   className="form-control"
                 />

@@ -46,7 +46,9 @@ import { FinanceAPI } from "../../../helpers/backend_helper";
 import {
   createExpense as onCreateExpense,
   getBuildings as onGetBuildings,
+  getEmployees as onGetEmployees,
   getExpenses as onGetExpenses,
+  getVendors as onGetVendors,
 } from "../../../slices/thunks";
 
 const categoryOptions = [
@@ -104,6 +106,11 @@ const getBuildingLabel = (expense, buildingMap) => {
   return `${building.name}${building.code ? ` (${building.code})` : ""}`;
 };
 
+const getEmployeeLabel = (employee) =>
+  `${employee?.personalInfo?.firstName || ""} ${employee?.personalInfo?.lastName || ""}`.trim() ||
+  employee?.employeeCode ||
+  "Employee";
+
 const StatCard = ({ icon: Icon, title, value, color, subtitle }) => (
   <Card className="border-0 shadow-sm h-100">
     <CardBody className="p-4">
@@ -157,8 +164,12 @@ const Expenses = () => {
     }),
   );
   const buildingsSelector = createSelector((state) => state.Buildings, (s) => s.buildings || []);
+  const employeesSelector = createSelector((state) => state.Employees, (s) => s.employees || []);
+  const vendorsSelector = createSelector((state) => state.Maintenance, (s) => s.vendors || []);
   const { expenses, pagination, loading } = useSelector(financeSelector);
   const buildings = useSelector(buildingsSelector);
+  const employees = useSelector(employeesSelector);
+  const vendors = useSelector(vendorsSelector);
 
   const [currentPage, setCurrentPage] = useState(1);
   const [expenseModal, setExpenseModal] = useState(false);
@@ -181,6 +192,8 @@ const Expenses = () => {
 
   useEffect(() => {
     dispatch(onGetBuildings({ params: { page: 1, limit: 100 } }));
+    dispatch(onGetEmployees({ params: { page: 1, limit: 200 } }));
+    dispatch(onGetVendors());
   }, [dispatch]);
 
   useEffect(() => {
@@ -202,6 +215,22 @@ const Expenses = () => {
       })),
     ],
     [buildings],
+  );
+  const employeeOptions = useMemo(
+    () =>
+      employees.map((employee) => ({
+        value: employee._id,
+        label: `${getEmployeeLabel(employee)} (${employee?.employeeCode || "EMP"})`,
+      })),
+    [employees],
+  );
+  const vendorOptions = useMemo(
+    () =>
+      vendors.map((vendor) => ({
+        value: vendor._id,
+        label: `${vendor.name}${vendor.vendorCode ? ` (${vendor.vendorCode})` : ""}`,
+      })),
+    [vendors],
   );
 
   const filteredExpenses = useMemo(() => {
@@ -248,6 +277,8 @@ const Expenses = () => {
       description: "",
       amount: "",
       buildingId: "",
+      employeeId: "",
+      vendorId: "",
       payeeName: "",
       payeeContact: "",
       payeeEmail: "",
@@ -273,6 +304,7 @@ const Expenses = () => {
               description: values.description,
               amount: Number(values.amount),
               buildingId: values.buildingId || undefined,
+              vendorId: values.category === "maintenance" ? values.vendorId || undefined : undefined,
               payee: {
                 name: values.payeeName,
                 contact: values.payeeContact || undefined,
@@ -297,6 +329,8 @@ const Expenses = () => {
             description: "",
             amount: "",
             buildingId: "",
+            employeeId: "",
+            vendorId: "",
             payeeName: "",
             payeeContact: "",
             payeeEmail: "",
@@ -312,6 +346,38 @@ const Expenses = () => {
       }
     },
   });
+
+  useEffect(() => {
+    if (expenseFormik.values.category === "salary") {
+      expenseFormik.setFieldValue("vendorId", "");
+      return;
+    }
+    if (expenseFormik.values.category === "maintenance") {
+      expenseFormik.setFieldValue("employeeId", "");
+      return;
+    }
+    if (expenseFormik.values.employeeId) expenseFormik.setFieldValue("employeeId", "");
+    if (expenseFormik.values.vendorId) expenseFormik.setFieldValue("vendorId", "");
+  }, [expenseFormik.values.category]);
+
+  const handleEmployeeSelect = (employeeId) => {
+    const employee = employees.find((item) => item._id === employeeId);
+    expenseFormik.setFieldValue("employeeId", employeeId || "");
+    expenseFormik.setFieldValue("payeeName", employee ? getEmployeeLabel(employee) : "");
+    expenseFormik.setFieldValue("payeeContact", employee?.contact?.primaryPhone || "");
+    expenseFormik.setFieldValue("payeeEmail", employee?.contact?.email || "");
+    if (employee?.salary?.amount !== undefined && employee?.salary?.amount !== null) {
+      expenseFormik.setFieldValue("amount", String(employee.salary.amount));
+    }
+  };
+
+  const handleVendorSelect = (vendorId) => {
+    const vendor = vendors.find((item) => item._id === vendorId);
+    expenseFormik.setFieldValue("vendorId", vendorId || "");
+    expenseFormik.setFieldValue("payeeName", vendor?.name || "");
+    expenseFormik.setFieldValue("payeeContact", vendor?.contact?.primaryPhone || "");
+    expenseFormik.setFieldValue("payeeEmail", vendor?.contact?.email || "");
+  };
 
   const openDetails = async (expense) => {
     const res = await FinanceAPI.getExpense(expense._id);
@@ -581,6 +647,35 @@ const Expenses = () => {
                   placeholder="Enter sub category"
                 />
               </Col>
+
+              {expenseFormik.values.category === "salary" && (
+                <Col md={12}>
+                  <Label className="form-label text-muted small mb-1">Employee</Label>
+                  <Select
+                    options={employeeOptions}
+                    value={employeeOptions.find((item) => item.value === expenseFormik.values.employeeId) || null}
+                    onChange={(option) => handleEmployeeSelect(option?.value || "")}
+                    placeholder="Select employee"
+                    classNamePrefix="select"
+                    styles={selectStyles}
+                  />
+                </Col>
+              )}
+
+              {expenseFormik.values.category === "maintenance" && (
+                <Col md={12}>
+                  <Label className="form-label text-muted small mb-1">Maintenance Vendor</Label>
+                  <Select
+                    options={vendorOptions}
+                    value={vendorOptions.find((item) => item.value === expenseFormik.values.vendorId) || null}
+                    onChange={(option) => handleVendorSelect(option?.value || "")}
+                    placeholder="Select maintenance vendor"
+                    classNamePrefix="select"
+                    styles={selectStyles}
+                  />
+                </Col>
+              )}
+
               <Col md={6}>
                 <Label className="form-label text-muted small mb-1">Amount *</Label>
                 <Input
@@ -633,6 +728,7 @@ const Expenses = () => {
                   value={expenseFormik.values.payeeName}
                   onChange={expenseFormik.handleChange}
                   placeholder="Enter payee name"
+                  readOnly={expenseFormik.values.category === "salary" || expenseFormik.values.category === "maintenance"}
                 />
               </Col>
               <Col md={4}>
@@ -642,6 +738,7 @@ const Expenses = () => {
                   value={expenseFormik.values.payeeContact}
                   onChange={expenseFormik.handleChange}
                   placeholder="Enter payee contact"
+                  readOnly={expenseFormik.values.category === "salary" || expenseFormik.values.category === "maintenance"}
                 />
               </Col>
               <Col md={4}>
@@ -652,6 +749,7 @@ const Expenses = () => {
                   value={expenseFormik.values.payeeEmail}
                   onChange={expenseFormik.handleChange}
                   placeholder="Enter payee email"
+                  readOnly={expenseFormik.values.category === "salary" || expenseFormik.values.category === "maintenance"}
                 />
               </Col>
 

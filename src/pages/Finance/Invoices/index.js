@@ -41,6 +41,7 @@ import BreadCrumb from "../../../Components/Common/BreadCrumb";
 import ActionIconButton from "../../../Components/Common/ActionIconButton";
 import { FinanceAPI } from "../../../helpers/backend_helper";
 import { getInvoices as onGetInvoices, getLeases as onGetLeases } from "../../../slices/thunks";
+import { getOrganization as onGetOrganization } from "../../../slices/organization/thunk";
 import { downloadInvoicePdf } from "../../../utils/financeDocuments";
 
 const today = new Date();
@@ -109,8 +110,10 @@ const Invoices = () => {
     }),
   );
   const leasesSelector = createSelector((state) => state.Leases, (s) => s.leases || []);
+  const organizationSelector = createSelector((state) => state.Organization, (s) => s.organizationData || []);
   const { invoices, pagination, loading } = useSelector(financeSelector);
   const leases = useSelector(leasesSelector);
+  const organizations = useSelector(organizationSelector);
 
   const [currentPage, setCurrentPage] = useState(1);
   const [month, setMonth] = useState(String(today.getMonth() + 1));
@@ -134,6 +137,7 @@ const Invoices = () => {
 
   useEffect(() => {
     dispatch(onGetLeases({ params: { page: 1, limit: 100, status: "active" } }));
+    dispatch(onGetOrganization());
   }, [dispatch]);
 
   useEffect(() => {
@@ -160,6 +164,7 @@ const Invoices = () => {
     leases.forEach((lease) => map.set(lease._id, lease));
     return map;
   }, [leases]);
+  const organization = organizations?.[0] || null;
 
   const openPreview = async () => {
     setPreviewLoading(true);
@@ -224,6 +229,7 @@ const Invoices = () => {
         lease?.buildingId?.name ||
         invoice?.buildingId?.name ||
         "-",
+      organization,
     });
   };
 

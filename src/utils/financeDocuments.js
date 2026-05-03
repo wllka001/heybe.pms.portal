@@ -1,5 +1,6 @@
 import { jsPDF } from "jspdf";
 import logoImage from "../assets/images/heybe-logo.png";
+import { FinanceAPI } from "../helpers/backend_helper";
 
 const formatCurrency = (amount) => `$${Number(amount || 0).toLocaleString()}`;
 const formatDate = (date) =>
@@ -35,6 +36,92 @@ const loadImageAsDataUrl = async (src) => {
   }
 };
 
+const BRAND = {
+  primary: [30, 49, 83],
+  secondary: [68, 84, 106],
+  accent: [198, 138, 24],
+  muted: [100, 116, 139],
+  light: [245, 247, 250],
+  line: [222, 226, 230],
+};
+
+const getUtilityUnit = (item) => {
+  const label = String(item?.description || item?.type || "").toLowerCase();
+  if (label.includes("water")) return "m3";
+  return "kWh";
+};
+
+const getUsageDescription = (item) => {
+  const previousValue = Number(item?.previousValue);
+  const currentValue = Number(item?.currentValue);
+  const hasReadingPair = Number.isFinite(previousValue) && Number.isFinite(currentValue);
+  const consumption = Number(item?.consumption || 0);
+  const unit = getUtilityUnit(item);
+
+  if (hasReadingPair) {
+    return `Last ${currentValue} - Previous ${previousValue} = Used ${consumption} ${unit}`;
+  }
+
+  if (consumption > 0) {
+    return `Last ${currentValue} - Previous ${previousValue} = Used ${consumption} ${unit}`;
+  }
+
+  return "";
+};
+
+const splitDescriptionLines = (doc, text, maxWidth) => {
+  const safeText = String(text || "");
+  const lines = doc.splitTextToSize(safeText, maxWidth);
+  return Array.isArray(lines) ? lines.filter(Boolean) : [safeText];
+};
+
+const enrichUtilityRows = async ({ invoice, utilityRows }) => {
+  const missingReadings = utilityRows.filter(
+    (item) =>
+      item?.readingId &&
+      (!Number.isFinite(Number(item?.previousValue)) || !Number.isFinite(Number(item?.currentValue))),
+  );
+
+  if (!missingReadings.length) {
+    return utilityRows;
+  }
+
+  try {
+    const res = await FinanceAPI.listReadings({
+      page: 1,
+      limit: 100,
+      leaseId: invoice?.leaseId,
+      month: Number(invoice?.period?.month),
+      year: Number(invoice?.period?.year),
+    });
+
+    if (!res?.success) {
+      return utilityRows;
+    }
+
+    const readingMap = new Map(
+      (res.data?.data || []).map((reading) => [String(reading._id), reading]),
+    );
+
+    return utilityRows.map((item) => {
+      const reading = readingMap.get(String(item?.readingId));
+      if (!reading) return item;
+
+      return {
+        ...item,
+        previousValue:
+          item?.previousValue ??
+          reading?.readings?.previous?.value,
+        currentValue:
+          item?.currentValue ??
+          reading?.readings?.current?.value,
+      };
+    });
+  } catch (_error) {
+    return utilityRows;
+  }
+};
+
 const addGradientHeader = (doc, y, title) => {
   // Gradient effect using multiple rectangles
   doc.setFillColor(16, 61, 104);
@@ -66,166 +153,174 @@ const addFooter = (doc, pageNumber, totalPages) => {
   doc.text(formatDate(new Date()), 20, pageHeight - 12);
 };
 
-export const downloadInvoicePdf = async ({ invoice, lease, buildingLabel }) => {
+export const downloadInvoicePdf = async ({ invoice, lease, buildingLabel, organization }) => {
   const doc = new jsPDF("p", "mm", "a4");
-  const logo = await loadImageAsDataUrl(logoImage);
+  const logo = (organization?.logo ? await loadImageAsDataUrl(organization.logo) : null) || (await loadImageAsDataUrl(logoImage));
 
   const tenantName =
     `${lease?.tenantId?.personalInfo?.firstName || ""} ${lease?.tenantId?.personalInfo?.lastName || ""}`.trim() ||
     "Tenant";
   const unitLabel = lease?.unitId?.unitNumber || invoice?.unitId?.unitNumber || "Unit";
   const rentAmount = Number(invoice?.items?.rent?.amount || 0);
-  const utilityRows = invoice?.items?.utilities || [];
+  const utilityRows = await enrichUtilityRows({
+    invoice,
+    utilityRows: invoice?.items?.utilities || [],
+  });
   const extraRows = invoice?.items?.additionalCharges || [];
+  const organizationName = organization?.name || "Organization";
+  const issueDate = formatDate(invoice?.createdAt || new Date());
+  const dueDateLabel = formatDate(invoice?.period?.dueDate);
+  const currency = (value) => formatCurrency(value);
   let y = 18;
 
   if (logo) {
-    doc.addImage(logo, "PNG", 16, y - 2, 18, 18);
+    doc.addImage(logo, "PNG", 14, y - 1, 28, 28);
   }
-  doc.setTextColor(16, 61, 104);
+
+  doc.setTextColor(...BRAND.primary);
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(16);
-  doc.text("Invoice", 40, y + 6);
+  doc.setFontSize(18);
+  doc.text(organizationName, 48, y + 9);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
-  doc.setTextColor(100, 116, 139);
-  doc.text("Heybe Property Management", 40, y + 12);
+  doc.setTextColor(...BRAND.secondary);
+  doc.text(`Invoice #: ${invoice?.invoiceNumber || "-"}`, 48, y + 16);
+  doc.text(`Due Date: ${dueDateLabel}`, 48, y + 22);
 
-  doc.setDrawColor(226, 232, 240);
-  doc.line(16, 38, 194, 38);
-
-  y = 48;
-  doc.setTextColor(30, 41, 59);
+  doc.setFillColor(...BRAND.light);
+  doc.setDrawColor(...BRAND.line);
+  doc.roundedRect(78, 44, 54, 12, 6, 6, "FD");
+  doc.setTextColor(20, 20, 20);
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(10);
-  doc.text("Reference", 16, y);
-  doc.text("Invoice Date", 100, y);
-  doc.text("Status", 156, y);
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(9);
-  doc.text(invoice?.invoiceNumber || "-", 16, y + 6);
-  doc.text(formatDate(invoice?.createdAt), 100, y + 6);
-  doc.text((invoice?.status || "pending").toUpperCase(), 156, y + 6);
+  doc.setFontSize(15);
+  doc.text("INVOICES", 105, 52, { align: "center" });
 
-  y = 68;
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(10);
-  doc.text("Bill To", 16, y);
-  doc.text("Property", 100, y);
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(9);
-  doc.text(tenantName, 16, y + 7);
-  doc.text(lease?.tenantId?.contact?.primaryPhone || "-", 16, y + 13);
-  doc.text(`Unit ${unitLabel}`, 100, y + 7);
-  doc.text(buildingLabel || "-", 100, y + 13);
-  doc.text(`Lease: ${lease?.leaseNumber || "-"}`, 100, y + 19);
-
-  y = 98;
-  doc.setFont("helvetica", "bold");
-  doc.text("Billing Period", 16, y);
-  doc.text("Due Date", 100, y);
-  doc.setFont("helvetica", "normal");
-  doc.text(`${invoice?.period?.year}-${String(invoice?.period?.month || "").padStart(2, "0")}`, 16, y + 6);
-  doc.text(formatDate(invoice?.period?.dueDate), 100, y + 6);
-
-  y = 108;
-  doc.setFillColor(16, 61, 104);
-  doc.rect(16, y, 178, 10, "F");
+  y = 69;
+  doc.setFillColor(...BRAND.primary);
+  doc.rect(16, y, 178, 16, "F");
   doc.setTextColor(255, 255, 255);
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(9);
-  doc.text("Description", 20, y + 6.5);
-  doc.text("Qty", 122, y + 6.5, { align: "right" });
-  doc.text("Rate", 152, y + 6.5, { align: "right" });
-  doc.text("Total", 190, y + 6.5, { align: "right" });
-
-  y += 14;
-  doc.setTextColor(30, 41, 59);
+  doc.setFontSize(9.5);
+  doc.text(`INVOICE: ${invoice?.invoiceNumber || "-"}`, 20, y + 7);
+  doc.text(`DATE ISSUED: ${issueDate}`, 190, y + 7, { align: "right" });
   doc.setFont("helvetica", "normal");
+  doc.text(`Name: ${tenantName}`, 20, y + 13);
+
+  y = 89;
+  doc.setFillColor(238, 238, 238);
+  doc.rect(14, y, 182, 9, "F");
+  doc.setTextColor(...BRAND.secondary);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8.5);
+  doc.text("Description", 16, y + 6);
+  doc.text("QTY", 116, y + 6, { align: "center" });
+  doc.text("Price", 132, y + 6, { align: "center" });
+  doc.text("Discount", 152, y + 6, { align: "center" });
+  doc.text("VAT", 166, y + 6, { align: "center" });
+  doc.text("Total", 184, y + 6, { align: "right" });
+
+  y += 13;
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(75, 85, 99);
 
   const rows = [
-    { description: "Monthly Rent", qty: "1", rate: formatCurrency(rentAmount), amount: formatCurrency(rentAmount) },
-    ...utilityRows.map((item) => ({
-      description: item.description || item.type || "Utility",
-      qty: String(item.consumption || 0),
-      rate: formatCurrency(item.rate || 0),
-      amount: formatCurrency(item.total || item.amount || 0),
-    })),
-    ...extraRows.map((item) => ({
-      description: item.description || item.type || "Additional Charge",
-      qty: "-",
-      rate: "-",
-      amount: formatCurrency(item.total || item.amount || 0),
-    })),
+    {
+      description: `Rent amount for invoice date ${issueDate}.`,
+      qty: "1",
+      price: currency(rentAmount),
+      discount: currency(0),
+      vat: currency(0),
+      total: currency(rentAmount),
+    },
+    ...utilityRows.map((item) => {
+      const amount = Number(item.amount || item.total || 0);
+      const tax = Number(item.tax || 0);
+      const usageDescription = getUsageDescription(item);
+      return {
+        description: usageDescription
+          ? `${item.description || item.type || "Utility"} (${usageDescription})`
+          : item.description || item.type || "Utility",
+        qty: String(item.consumption || 1),
+        price: currency(item.rate || amount),
+        discount: currency(0),
+        vat: currency(tax),
+        total: currency(item.total || amount + tax),
+      };
+    }),
+    ...extraRows.map((item) => {
+      const amount = Number(item.amount || item.total || 0);
+      const tax = Number(item.tax || 0);
+      return {
+        description: item.description || item.type || "Additional Charge",
+        qty: "1",
+        price: currency(amount),
+        discount: currency(0),
+        vat: currency(tax),
+        total: currency(item.total || amount + tax),
+      };
+    }),
   ];
 
   rows.forEach((row, index) => {
+    const rowTop = y - 5;
+    const descriptionLines = splitDescriptionLines(doc, row.description, 104);
+    const lineHeight = 5;
+    const rowHeight = Math.max(11, 6 + descriptionLines.length * lineHeight);
+
     if (index % 2 === 0) {
-      doc.setFillColor(248, 250, 252);
-      doc.rect(16, y - 4, 178, 8, "F");
+      doc.setFillColor(251, 251, 251);
+      doc.rect(14, rowTop, 182, rowHeight, "F");
     }
-    doc.text(String(row.description).slice(0, 60), 20, y);
-    doc.text(row.qty, 122, y, { align: "right" });
-    doc.text(row.rate, 152, y, { align: "right" });
-    doc.text(row.amount, 190, y, { align: "right" });
-    y += 8;
+    descriptionLines.forEach((line, lineIndex) => {
+      doc.text(line, 16, y + lineIndex * lineHeight);
+    });
+    doc.text(row.qty, 116, y, { align: "center" });
+    doc.text(row.price, 132, y, { align: "center" });
+    doc.text(row.discount, 152, y, { align: "center" });
+    doc.text(row.vat, 166, y, { align: "center" });
+    doc.text(row.total, 184, y, { align: "right" });
+    doc.setDrawColor(...BRAND.line);
+    doc.line(14, y + rowHeight - 3, 196, y + rowHeight - 3);
+    y += rowHeight;
   });
 
-  y += 4;
-  doc.line(120, y, 194, y);
-  y += 8;
+  y += 10;
+  doc.setFillColor(...BRAND.light);
+  doc.rect(14, y, 182, 32, "F");
+  doc.setTextColor(...BRAND.secondary);
   doc.setFont("helvetica", "normal");
-  doc.text("Subtotal", 140, y);
-  doc.text(formatCurrency(invoice?.summary?.subtotal || 0), 190, y, { align: "right" });
-  y += 7;
-  if ((invoice?.summary?.taxTotal || 0) > 0) {
-    doc.text("Tax", 140, y);
-    doc.text(formatCurrency(invoice?.summary?.taxTotal || 0), 190, y, { align: "right" });
-    y += 7;
-  }
-  if ((invoice?.paidAmount || 0) > 0) {
-    doc.text("Paid", 140, y);
-    doc.text(formatCurrency(invoice?.paidAmount || 0), 190, y, { align: "right" });
-    y += 7;
-  }
+  doc.setFontSize(10);
+  doc.text("SUBTOTAL :", 110, y + 7, { align: "right" });
+  doc.text(currency(invoice?.summary?.subtotal || 0), 150, y + 7, { align: "right" });
+  doc.text("DISCOUNT :", 110, y + 14, { align: "right" });
+  doc.text(currency(0), 150, y + 14, { align: "right" });
+  doc.text("VAT :", 110, y + 21, { align: "right" });
+  doc.text(currency(invoice?.summary?.taxTotal || 0), 150, y + 21, { align: "right" });
   doc.setFont("helvetica", "bold");
-  doc.setTextColor(16, 61, 104);
-  doc.text("Total", 140, y);
-  doc.text(formatCurrency(invoice?.summary?.totalAmount || 0), 190, y, { align: "right" });
-  y += 7;
-  if ((invoice?.balance || 0) > 0) {
-    doc.setTextColor(220, 38, 38);
-    doc.text("Balance Due", 140, y);
-    doc.text(formatCurrency(invoice?.balance || 0), 190, y, { align: "right" });
-  }
+  doc.text("TOTAL :", 110, y + 28, { align: "right" });
+  doc.text(currency(invoice?.summary?.totalAmount || 0), 150, y + 28, { align: "right" });
 
-  y += 15;
-  if (y > 250) {
-    doc.addPage();
-    y = 20;
-  }
-  
-  doc.setDrawColor(226, 232, 240);
-  doc.line(16, y, 194, y);
-  y += 8;
-
-  doc.setTextColor(16, 61, 104);
+  y += 50;
+  doc.setTextColor(...BRAND.primary);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(10);
-  doc.text("Payment Instructions", 16, y);
-  y += 6;
-  doc.setTextColor(100, 116, 139);
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(8);
-  doc.text("Please make payments via the tenant portal or at the building management office.", 16, y);
-  doc.text("Late payments may incur additional charges as per your lease agreement.", 16, y + 4);
+  doc.text("WE ARE HONORED TO HAVE YOU AS ONE OF OUR DEAR CUSTOMERS.", 105, y, { align: "center" });
 
-  doc.setTextColor(100, 116, 139);
+  y += 24;
+  doc.setFont("helvetica", "normal");
+  doc.text("SIGNATURE", 105, y, { align: "center" });
+  doc.setDrawColor(...BRAND.secondary);
+  doc.line(65, y + 10, 145, y + 10);
+
+  y += 30;
+  doc.setFont("helvetica", "bold");
+  doc.text("THANKS FOR YOUR COLLABORATION.", 105, y, { align: "center" });
+
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8);
-  doc.text("This is a computer generated invoice and does not require a physical signature.", 105, 280, { align: "center" });
-  doc.text(`Generated on ${formatDate(new Date())}`, 105, 284, { align: "center" });
-  
+  doc.setTextColor(...BRAND.muted);
+  doc.text(`Generated on ${formatDate(new Date())}`, 105, 287, { align: "center" });
+
   doc.save(`${invoice?.invoiceNumber || "invoice"}.pdf`);
 };
 
