@@ -48,7 +48,7 @@ const statusOptions = [
 ];
 
 const MaintenanceVendors = () => {
-  document.title = "Vendors | Apartment Management";
+  document.title = "Vendors | Degaanly";
   const dispatch = useDispatch();
 
   const selector = createSelector((state) => state.Maintenance, (s) => ({

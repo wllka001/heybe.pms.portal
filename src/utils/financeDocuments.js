@@ -1,6 +1,7 @@
 import { jsPDF } from "jspdf";
 import logoImage from "../assets/images/heybe-logo.png";
 import { FinanceAPI } from "../helpers/backend_helper";
+import { toast } from "react-toastify";
 
 const formatCurrency = (amount) => `$${Number(amount || 0).toLocaleString()}`;
 const formatDate = (date) =>
@@ -284,9 +285,12 @@ export const downloadInvoicePdf = async ({ invoice, lease, buildingLabel, organi
     y += rowHeight;
   });
 
+  const previousBalance = Number(invoice?.previousBalance || 0);
+  const finalTotal = Number(invoice?.summary?.totalAmount || 0) + previousBalance;
+
   y += 10;
   doc.setFillColor(...BRAND.light);
-  doc.rect(14, y, 182, 32, "F");
+  doc.rect(14, y, 182, 45, "F");
   doc.setTextColor(...BRAND.secondary);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(10);
@@ -296,11 +300,15 @@ export const downloadInvoicePdf = async ({ invoice, lease, buildingLabel, organi
   doc.text(currency(0), 150, y + 14, { align: "right" });
   doc.text("VAT :", 110, y + 21, { align: "right" });
   doc.text(currency(invoice?.summary?.taxTotal || 0), 150, y + 21, { align: "right" });
-  doc.setFont("helvetica", "bold");
   doc.text("TOTAL :", 110, y + 28, { align: "right" });
   doc.text(currency(invoice?.summary?.totalAmount || 0), 150, y + 28, { align: "right" });
+  doc.text("PREVIOUS BALANCE :", 110, y + 35, { align: "right" });
+  doc.text(currency(previousBalance), 150, y + 35, { align: "right" });
+  doc.setFont("helvetica", "bold");
+  doc.text("FINAL TOTAL :", 110, y + 42, { align: "right" });
+  doc.text(currency(finalTotal), 150, y + 42, { align: "right" });
 
-  y += 50;
+  y += 63;
   doc.setTextColor(...BRAND.primary);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(10);
@@ -590,33 +598,92 @@ export const downloadGenericReportPdf = async ({ title, summaryRows, detailRows 
 
 export const printGenericReport = ({ title, summaryRows, tableRows }) => {
   const headers = Object.keys(tableRows?.[0] || {});
+
+  // Build a footer totals row if there are numeric columns
+  let footerHtml = "";
+  if (tableRows && tableRows.length > 0) {
+    const sampleRow = tableRows[0];
+    const columnKeys = Object.keys(sampleRow);
+    const hasNumeric = columnKeys.some(key => {
+      const val = sampleRow[key];
+      return typeof val === "number" || (!isNaN(val) && !isNaN(parseFloat(val)) && typeof val !== "object" && typeof val !== "boolean");
+    });
+
+    if (hasNumeric) {
+      footerHtml = `
+        <tfoot>
+          <tr style="background: #f8f9fa; font-weight: bold; border-top: 2px solid #64748b;">
+            ${columnKeys.map((key, colIdx) => {
+              const val = sampleRow[key];
+              const isNumeric = typeof val === "number" || (!isNaN(val) && !isNaN(parseFloat(val)) && typeof val !== "object" && typeof val !== "boolean");
+              if (colIdx === 0) {
+                return `<td style="border: 1px solid #cbd5e1; padding: 8px;">Total:</td>`;
+              }
+              if (isNumeric) {
+                const sum = tableRows.reduce((acc, r) => acc + (Number(r[key]) || 0), 0);
+                return `<td style="border: 1px solid #cbd5e1; padding: 8px; text-align: right; font-weight: bold;">${formatCurrency(sum)}</td>`;
+              }
+              return `<td style="border: 1px solid #cbd5e1; padding: 8px;"></td>`;
+            }).join("")}
+          </tr>
+        </tfoot>
+      `;
+    }
+  }
+
+  const filteredSummary = (summaryRows || []).filter(
+    (row) => !row.label.includes("%") && !row.label.toLowerCase().includes("rate")
+  );
+
+  let summaryTableHtml = "";
+  if (filteredSummary.length > 0) {
+    summaryTableHtml = `
+      <div style="max-width: 500px; margin-bottom: 24px;">
+        <h3 style="font-size: 14px; margin-bottom: 12px; color: #0f172a; border-bottom: 2px solid #cbd5e1; padding-bottom: 6px;">Report Summary</h3>
+        <table style="width: 100%; border-collapse: collapse; border: 1px solid #cbd5e1; margin-top: 0;">
+          <tbody>
+            ${filteredSummary.map(row => `
+              <tr>
+                <td style="padding: 8px; border: 1px solid #cbd5e1; color: #64748b; font-size: 12px;">${escapeHtml(row.label)}</td>
+                <td style="padding: 8px; border: 1px solid #cbd5e1; text-align: right; font-weight: bold; font-size: 12px; color: #0f172a;">${escapeHtml(row.value)}</td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      </div>
+    `;
+  }
+
   const html = `
     <html>
       <head>
         <title>${escapeHtml(title || "Report")}</title>
         <style>
           body { font-family: Arial, sans-serif; padding: 24px; }
-          table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+          table { width: 100%; border-collapse: collapse; margin-top: 16px; border: 1px solid #cbd5e1; }
           th, td { border: 1px solid #cbd5e1; padding: 8px; text-align: left; font-size: 12px; }
-          .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
-          .card { border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px; }
         </style>
       </head>
       <body>
         <h1>${escapeHtml(title || "Report")}</h1>
-        <div class="cards">
-          ${(summaryRows || [])
-      .map((row) => `<div class="card"><div>${escapeHtml(row.label)}</div><strong>${escapeHtml(row.value)}</strong></div>`)
-      .join("")}
-        </div>
+        ${summaryTableHtml}
         <table>
-          <tr>${headers.map((header) => `<th>${escapeHtml(header)}</th>`).join("")}</tr>
-          ${(tableRows || [])
-      .map(
-        (row) =>
-          `<tr>${headers.map((header) => `<td>${escapeHtml(row[header] ?? "")}</td>`).join("")}</tr>`,
-      )
-      .join("")}
+          <thead>
+            <tr>${headers.map((header) => `<th>${escapeHtml(header)}</th>`).join("")}</tr>
+          </thead>
+          <tbody>
+            ${(tableRows || [])
+        .map(
+          (row) =>
+            `<tr>${headers.map((header) => {
+              const val = row[header];
+              const isNumeric = typeof val === "number" || (!isNaN(val) && !isNaN(parseFloat(val)) && typeof val !== "object" && typeof val !== "boolean");
+              return `<td style="${isNumeric ? 'text-align: right; font-weight: bold;' : ''}">${escapeHtml(isNumeric && typeof val === 'number' ? formatCurrency(val) : (val ?? ""))}</td>`;
+            }).join("")}</tr>`,
+        )
+        .join("")}
+          </tbody>
+          ${footerHtml}
         </table>
       </body>
     </html>`;
@@ -627,4 +694,140 @@ export const printGenericReport = ({ title, summaryRows, tableRows }) => {
   win.document.close();
   win.focus();
   win.print();
+};
+
+export const downloadReceiptPdf = async ({ payment, lease, tenant, organization }) => {
+  const hasDeposit = payment.allocation?.some((row) => row.itemType === 'deposit');
+  if (hasDeposit && organization?.settings?.depositReceiptToggle === false) {
+    toast.error("Deposit receipts are disabled by organization settings.");
+    return false;
+  }
+
+  const doc = new jsPDF("p", "mm", "a4");
+  const logo = (organization?.logo ? await loadImageAsDataUrl(organization.logo) : null) || (await loadImageAsDataUrl(logoImage));
+
+  const tenantName =
+    `${tenant?.personalInfo?.firstName || ""} ${tenant?.personalInfo?.lastName || ""}`.trim() ||
+    "Tenant";
+  const unitLabel = lease?.unitId?.unitNumber || payment?.unitId?.unitNumber || "Unit";
+  const buildingName = lease?.buildingId?.name || payment?.buildingId?.name || "Building";
+  const organizationName = organization?.name || "Organization";
+  
+  const paymentDateLabel = formatDate(payment?.paymentDate || new Date());
+  const receiptNumber = payment?.receipt?.receiptNumber || "-";
+  const paymentMethod = payment?.method?.toUpperCase() || "-";
+
+  let referenceNumber = "-";
+  if (payment?.method === "evc") {
+    referenceNumber = payment?.methodDetails?.evc?.referenceNumber || "-";
+  } else if (payment?.method === "merchant") {
+    referenceNumber = payment?.methodDetails?.merchant?.referenceNumber || "-";
+  } else if (payment?.method === "bank") {
+    referenceNumber = payment?.methodDetails?.bank?.transactionId || "-";
+  }
+
+  let y = 18;
+
+  if (logo) {
+    doc.addImage(logo, "PNG", 14, y - 1, 28, 28);
+  }
+
+  doc.setTextColor(...BRAND.primary);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(18);
+  doc.text(organizationName, 48, y + 9);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  doc.setTextColor(...BRAND.secondary);
+  doc.text(`Receipt #: ${receiptNumber}`, 48, y + 16);
+  doc.text(`Date Paid: ${paymentDateLabel}`, 48, y + 22);
+
+  doc.setFillColor(...BRAND.light);
+  doc.setDrawColor(...BRAND.line);
+  doc.roundedRect(78, 44, 54, 12, 6, 6, "FD");
+  doc.setTextColor(20, 20, 20);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(15);
+  doc.text("PAYMENT RECEIPT", 105, 52, { align: "center" });
+
+  y = 69;
+  doc.setFillColor(...BRAND.primary);
+  doc.rect(16, y, 178, 16, "F");
+  doc.setTextColor(255, 255, 255);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9.5);
+  doc.text(`RECEIPT NO: ${receiptNumber}`, 20, y + 7);
+  doc.text(`DATE GENERATED: ${formatDate(new Date())}`, 190, y + 7, { align: "right" });
+  doc.setFont("helvetica", "normal");
+  doc.text(`Paid By: ${tenantName} | Unit: ${unitLabel} (${buildingName})`, 20, y + 13);
+
+  y = 89;
+  doc.setFillColor(238, 238, 238);
+  doc.rect(14, y, 182, 9, "F");
+  doc.setTextColor(...BRAND.secondary);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8.5);
+  doc.text("Item Type", 16, y + 6);
+  doc.text("Payment Method", 80, y + 6);
+  doc.text("Reference Number", 130, y + 6);
+  doc.text("Amount Paid", 184, y + 6, { align: "right" });
+
+  y += 13;
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(75, 85, 99);
+
+  const allocations = payment.allocation || [];
+  allocations.forEach((alloc, index) => {
+    const rowTop = y - 5;
+    const rowHeight = 12;
+
+    if (index % 2 === 0) {
+      doc.setFillColor(251, 251, 251);
+      doc.rect(14, rowTop, 182, rowHeight, "F");
+    }
+
+    const typeLabel = alloc.itemType === "deposit" ? "Security Deposit" : alloc.itemType === "rent" ? "Rent" : alloc.itemType === "beginning_balance" ? "Beginning Balance" : alloc.itemType?.toUpperCase() || "Payment";
+    
+    doc.text(typeLabel, 16, y + 2);
+    doc.text(paymentMethod, 80, y + 2);
+    doc.text(referenceNumber, 130, y + 2);
+    doc.text(formatCurrency(alloc.amount), 184, y + 2, { align: "right" });
+
+    doc.setDrawColor(...BRAND.line);
+    doc.line(14, y + rowHeight - 3, 196, y + rowHeight - 3);
+    y += rowHeight;
+  });
+
+  y += 10;
+  doc.setFillColor(...BRAND.light);
+  doc.rect(14, y, 182, 20, "F");
+  doc.setTextColor(...BRAND.secondary);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(11);
+  doc.text("TOTAL PAID :", 110, y + 11, { align: "right" });
+  doc.text(formatCurrency(payment.amount), 184, y + 11, { align: "right" });
+
+  y += 35;
+  doc.setTextColor(...BRAND.primary);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  doc.text("WE ARE HONORED TO HAVE YOU AS ONE OF OUR DEAR CUSTOMERS.", 105, y, { align: "center" });
+
+  y += 24;
+  doc.setFont("helvetica", "normal");
+  doc.text("SIGNATURE / STAMP", 105, y, { align: "center" });
+  doc.setDrawColor(...BRAND.secondary);
+  doc.line(65, y + 10, 145, y + 10);
+
+  y += 30;
+  doc.setFont("helvetica", "bold");
+  doc.text("THANKS FOR YOUR COLLABORATION.", 105, y, { align: "center" });
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
+  doc.setTextColor(...BRAND.muted);
+  doc.text(`Generated on ${formatDate(new Date())}`, 105, 287, { align: "center" });
+
+  doc.save(`Receipt-${receiptNumber}.pdf`);
+  return true;
 };

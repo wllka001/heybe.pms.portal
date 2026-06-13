@@ -80,7 +80,7 @@ const SingIn = (props) => {
         }
     }, [dispatch, errorMsg]);
 
-    document.title = "SignIn | apartment";
+    document.title = "SignIn | Degaanly";
     return (
         <React.Fragment>
             <div className="auth-page-wrapper auth-bg-cover py-5 d-flex justify-content-center align-items-center min-vh-100">
@@ -182,7 +182,7 @@ const SingIn = (props) => {
                         <Row>
                             <Col lg={12}>
                                 <div className="text-center">
-                                    <p className="mb-0">&copy; {new Date().getFullYear()}. Crafted with <i className="mdi mdi-heart text-danger"></i> by apartment</p>
+                                    <p className="mb-0">&copy; {new Date().getFullYear()}. Crafted with <i className="mdi mdi-heart text-danger"></i> by degaanly</p>
                                 </div>
                             </Col>
                         </Row>

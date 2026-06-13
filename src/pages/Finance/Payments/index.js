@@ -48,7 +48,9 @@ import {
 import BreadCrumb from "../../../Components/Common/BreadCrumb";
 import ActionIconButton from "../../../Components/Common/ActionIconButton";
 import { FinanceAPI } from "../../../helpers/backend_helper";
-import { getLeases as onGetLeases, getPayments as onGetPayments } from "../../../slices/thunks";
+import { getLeases as onGetLeases, getPayments as onGetPayments, getOrganization as onGetOrganization } from "../../../slices/thunks";
+import useAuthUser from "../../../Components/Hooks/useAuthUser";
+import { downloadReceiptPdf } from "../../../utils/financeDocuments";
 
 const today = new Date();
 const monthOptions = [
@@ -161,7 +163,7 @@ const StatusBadge = ({ status }) => {
 };
 
 const Payments = () => {
-  document.title = "Finance - Payments | Apartment Management";
+  document.title = "Finance - Payments | Degaanly";
   const dispatch = useDispatch();
 
   const financeSelector = createSelector(
@@ -175,6 +177,21 @@ const Payments = () => {
   const leaseSelector = createSelector((state) => state.Leases, (s) => s.leases || []);
   const { payments, paymentPagination, loading } = useSelector(financeSelector);
   const leases = useSelector(leaseSelector);
+
+  const userAuth = useAuthUser();
+  const businessId = userAuth.businessId;
+
+  const selectOrganizationData = createSelector(
+    (state) => state.Organization,
+    (organizationData) => organizationData.organizationData
+  );
+  const organization = useSelector(selectOrganizationData);
+
+  useEffect(() => {
+    if (businessId) {
+      dispatch(onGetOrganization(businessId));
+    }
+  }, [dispatch, businessId]);
 
   const [currentPage, setCurrentPage] = useState(1);
   const [paymentModal, setPaymentModal] = useState(false);
@@ -252,6 +269,15 @@ const Payments = () => {
       }));
   }, [leases, openInvoices]);
 
+  const allLeaseOptions = useMemo(() => {
+    return leases
+      .filter((lease) => lease.terms?.depositPaid !== true)
+      .map((lease) => ({
+        value: lease._id,
+        label: getLeaseLabel(lease, lease?.tenantId),
+      }));
+  }, [leases]);
+
   // Calculate statistics
   const stats = useMemo(() => {
     const totalPayments = payments.length;
@@ -263,6 +289,7 @@ const Payments = () => {
 
   const paymentFormik = useFormik({
     initialValues: {
+      paymentType: "invoice",
       leaseId: "",
       invoiceId: "",
       amount: "",
@@ -275,8 +302,13 @@ const Payments = () => {
       tenantId: "",
     },
     validationSchema: Yup.object({
+      paymentType: Yup.string().required("Payment type is required"),
       leaseId: Yup.string().required("Lease is required"),
-      invoiceId: Yup.string().required("Invoice is required"),
+      invoiceId: Yup.string().when("paymentType", {
+        is: "invoice",
+        then: (schema) => schema.required("Invoice is required"),
+        otherwise: (schema) => schema.notRequired().nullable(),
+      }),
       amount: Yup.number().min(0.01).required("Amount is required"),
       paymentDate: Yup.string().required("Payment date is required"),
       referenceNumber: Yup.string().required("Reference is required"),
@@ -291,6 +323,26 @@ const Payments = () => {
 
       try {
         const action = editMode && selectedPayment ? "update" : "create";
+        const payload = {
+          tenantId: values.tenantId,
+          leaseId: values.leaseId,
+          amount: Number(values.amount),
+          paymentDate: values.paymentDate,
+          method: values.method,
+          methodDetails,
+          notes: values.notes || undefined,
+          unitId: values.unitId,
+          buildingId: values.buildingId,
+        };
+
+        if (values.paymentType === "deposit") {
+          payload.allocation = [{ itemType: "deposit", amount: Number(values.amount) }];
+        } else if (values.paymentType === "beginning_balance") {
+          payload.allocation = [{ itemType: "beginning_balance", amount: Number(values.amount) }];
+        } else {
+          payload.invoiceId = values.invoiceId;
+        }
+
         const res =
           action === "update"
             ? await FinanceAPI.updatePayment(selectedPayment._id, {
@@ -300,18 +352,7 @@ const Payments = () => {
               methodDetails,
               notes: values.notes || undefined,
             })
-            : await FinanceAPI.createPayment({
-              tenantId: values.tenantId,
-              leaseId: values.leaseId,
-              invoiceId: values.invoiceId,
-              amount: Number(values.amount),
-              paymentDate: values.paymentDate,
-              method: values.method,
-              methodDetails,
-              notes: values.notes || undefined,
-              unitId: values.unitId,
-              buildingId: values.buildingId,
-            });
+            : await FinanceAPI.createPayment(payload);
 
         if (res.success) {
           toast.success(action === "update" ? "Payment updated successfully." : "Payment recorded successfully.");
@@ -327,6 +368,22 @@ const Payments = () => {
       }
     },
   });
+
+  const beginningBalanceLeaseOptions = useMemo(() => {
+    return leases
+      .filter((lease) => (lease.tenantId?.beginningBalance || 0) > 0)
+      .map((lease) => ({
+        value: lease._id,
+        label: getLeaseLabel(lease, lease?.tenantId),
+      }));
+  }, [leases]);
+
+  const leaseOptionsToUse =
+    paymentFormik.values.paymentType === "beginning_balance"
+      ? beginningBalanceLeaseOptions
+      : paymentFormik.values.paymentType === "deposit"
+        ? allLeaseOptions
+        : leaseOptions;
 
   const filteredInvoices = useMemo(
     () => openInvoices.filter((invoice) => invoice.leaseId === paymentFormik.values.leaseId),
@@ -403,7 +460,12 @@ const Payments = () => {
       "buildingId",
       typeof selectedLease.buildingId === "object" ? selectedLease.buildingId?._id : selectedLease.buildingId,
     );
-  }, [leaseMap, paymentFormik.values.leaseId]);
+    if (paymentFormik.values.paymentType === "deposit") {
+      paymentFormik.setFieldValue("amount", String(selectedLease.terms?.securityDeposit || ""));
+    } else if (paymentFormik.values.paymentType === "beginning_balance") {
+      paymentFormik.setFieldValue("amount", String(selectedLease.tenantId?.beginningBalance || ""));
+    }
+  }, [leaseMap, paymentFormik.values.leaseId, paymentFormik.values.paymentType]);
 
   useEffect(() => {
     const invoice = invoiceMap.get(paymentFormik.values.invoiceId);
@@ -416,6 +478,7 @@ const Payments = () => {
     setEditMode(false);
     setSelectedPayment(null);
     paymentFormik.resetForm();
+    paymentFormik.setFieldValue("paymentType", "invoice");
     setPaymentModal(true);
   };
 
@@ -426,6 +489,7 @@ const Payments = () => {
     setSelectedPayment(data);
     setEditMode(true);
     paymentFormik.setValues({
+      paymentType: data.allocation?.some(a => a.itemType === 'deposit') ? "deposit" : "invoice",
       leaseId: typeof data.leaseId === "object" ? data.leaseId?._id : data.leaseId || "",
       invoiceId: typeof data.invoiceId === "object" ? data.invoiceId?._id : data.invoiceId || "",
       amount: String(data.amount || ""),
@@ -475,10 +539,16 @@ const Payments = () => {
   };
 
   const printReceipt = async (payment) => {
-    const res = await FinanceAPI.paymentReceipt(payment._id);
-    if (res.success && res.data?.downloadUrl) {
-      window.open(res.data.downloadUrl, "_blank");
-    }
+    const leaseId = payment.leaseId?._id || payment.leaseId;
+    const lease = leaseMap.get(leaseId);
+    const tenant = payment.tenantId || lease?.tenantId;
+
+    await downloadReceiptPdf({
+      payment,
+      lease,
+      tenant,
+      organization,
+    });
   };
 
   const columns = [
@@ -759,11 +829,76 @@ const Payments = () => {
           <ModalBody className="p-4">
             <Row className="g-4">
               <Col md={12}>
+                <Label className="form-label text-muted small mb-1">Payment Type *</Label>
+                <div className="d-flex gap-4 flex-wrap">
+                  <FormGroup check>
+                    <Input
+                      type="radio"
+                      name="paymentType"
+                      id="paymentTypeInvoice"
+                      value="invoice"
+                      checked={paymentFormik.values.paymentType === "invoice"}
+                      onChange={() => {
+                        paymentFormik.setFieldValue("paymentType", "invoice");
+                        paymentFormik.setFieldValue("invoiceId", "");
+                      }}
+                      disabled={editMode}
+                    />
+                    <Label check for="paymentTypeInvoice" style={{ fontWeight: 500 }}>
+                      Invoice Payment
+                    </Label>
+                  </FormGroup>
+                  <FormGroup check>
+                    <Input
+                      type="radio"
+                      name="paymentType"
+                      id="paymentTypeDeposit"
+                      value="deposit"
+                      checked={paymentFormik.values.paymentType === "deposit"}
+                      onChange={() => {
+                        paymentFormik.setFieldValue("paymentType", "deposit");
+                        paymentFormik.setFieldValue("invoiceId", "");
+                        const selectedLease = leaseMap.get(paymentFormik.values.leaseId);
+                        if (selectedLease) {
+                          paymentFormik.setFieldValue("amount", String(selectedLease.terms?.securityDeposit || ""));
+                        }
+                      }}
+                      disabled={editMode}
+                    />
+                    <Label check for="paymentTypeDeposit" style={{ fontWeight: 500 }}>
+                      Security Deposit
+                    </Label>
+                  </FormGroup>
+                  <FormGroup check>
+                    <Input
+                      type="radio"
+                      name="paymentType"
+                      id="paymentTypeBeginningBalance"
+                      value="beginning_balance"
+                      checked={paymentFormik.values.paymentType === "beginning_balance"}
+                      onChange={() => {
+                        paymentFormik.setFieldValue("paymentType", "beginning_balance");
+                        paymentFormik.setFieldValue("invoiceId", "");
+                        const selectedLease = leaseMap.get(paymentFormik.values.leaseId);
+                        if (selectedLease && selectedLease.tenantId) {
+                          paymentFormik.setFieldValue("amount", String(selectedLease.tenantId.beginningBalance || ""));
+                        }
+                      }}
+                      disabled={editMode}
+                    />
+                    <Label check for="paymentTypeBeginningBalance" style={{ fontWeight: 500 }}>
+                      Beginning Balance
+                    </Label>
+                  </FormGroup>
+                </div>
+              </Col>
+
+              <Col md={12}>
                 <Label className="form-label text-muted small mb-1">Lease *</Label>
                 <Select
-                  options={leaseOptions}
-                  placeholder="Select lease with unpaid invoices..."
-                  value={leaseOptions.find((option) => option.value === paymentFormik.values.leaseId) || null}
+                  options={leaseOptionsToUse}
+                  placeholder="Select lease..."
+                  value={leaseOptionsToUse.find((option) => option.value === paymentFormik.values.leaseId) || null}
                   onChange={(option) => {
                     paymentFormik.setFieldValue("leaseId", option?.value || "");
                     if (!editMode) paymentFormik.setFieldValue("invoiceId", "");
@@ -777,21 +912,23 @@ const Payments = () => {
                 )}
               </Col>
 
-              <Col md={12}>
-                <Label className="form-label text-muted small mb-1">Invoice *</Label>
-                <Select
-                  options={filteredInvoiceOptions}
-                  placeholder="Select invoice..."
-                  value={filteredInvoiceOptions.find((option) => option.value === paymentFormik.values.invoiceId) || null}
-                  onChange={(option) => paymentFormik.setFieldValue("invoiceId", option?.value || "")}
-                  isDisabled={editMode}
-                  classNamePrefix="select"
-                  styles={selectStyles}
-                />
-                {paymentFormik.errors.invoiceId && paymentFormik.touched.invoiceId && (
-                  <small className="text-danger">{paymentFormik.errors.invoiceId}</small>
-                )}
-              </Col>
+              {paymentFormik.values.paymentType === "invoice" && (
+                <Col md={12}>
+                  <Label className="form-label text-muted small mb-1">Invoice *</Label>
+                  <Select
+                    options={filteredInvoiceOptions}
+                    placeholder="Select invoice..."
+                    value={filteredInvoiceOptions.find((option) => option.value === paymentFormik.values.invoiceId) || null}
+                    onChange={(option) => paymentFormik.setFieldValue("invoiceId", option?.value || "")}
+                    isDisabled={editMode}
+                    classNamePrefix="select"
+                    styles={selectStyles}
+                  />
+                  {paymentFormik.errors.invoiceId && paymentFormik.touched.invoiceId && (
+                    <small className="text-danger">{paymentFormik.errors.invoiceId}</small>
+                  )}
+                </Col>
+              )}
 
               {selectedLease && (
                 <Col md={12}>
@@ -803,7 +940,11 @@ const Payments = () => {
                       <div>
                         <div className="fw-semibold">{getLeaseLabel(selectedLease, selectedLease?.tenantId)}</div>
                         <small className="text-muted">
-                          {selectedInvoice ? (
+                          {paymentFormik.values.paymentType === "deposit" ? (
+                            <>Security Deposit: {formatCurrency(selectedLease.terms?.securityDeposit || 0)}</>
+                          ) : paymentFormik.values.paymentType === "beginning_balance" ? (
+                            <>Beginning Balance: {formatCurrency(selectedLease?.tenantId?.beginningBalance || 0)}</>
+                          ) : selectedInvoice ? (
                             <>Invoice: {selectedInvoice.invoiceNumber} | Balance: {formatCurrency(selectedInvoice.balance)}</>
                           ) : (
                             <>Select an invoice to see details</>
@@ -1171,7 +1312,7 @@ export default Payments;
 //       : payment?.methodDetails?.bank?.transactionId || "";
 
 // const Payments = () => {
-//   document.title = "Finance - Payments | Apartment Management";
+//   document.title = "Finance - Payments | Degaanly";
 //   const dispatch = useDispatch();
 
 //   const financeSelector = createSelector(

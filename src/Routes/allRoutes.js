@@ -26,6 +26,7 @@ import Expenses from "../pages/Finance/Expenses";
 import Invoices from "../pages/Finance/Invoices";
 import Payments from "../pages/Finance/Payments";
 import UtilityBills from "../pages/Finance/UtilityBills";
+import Refunds from "../pages/Finance/Refunds";
 
 //pages
 import TwosVerify from "../pages/AuthenticationInner/TwoStepVerification";
@@ -34,11 +35,9 @@ import Profile from "../pages/Profile";
 import Cover404 from "../pages/AuthenticationInner/Errors/Cover404";
 import Alt404 from "../pages/AuthenticationInner/Errors/Alt404";
 import Error500 from "../pages/AuthenticationInner/Errors/Error500";
-
 import Offlinepage from "../pages/AuthenticationInner/Errors/Offlinepage";
 
 const authProtectedRoutes = [
-  // Dashboard
   { path: "/dashboard", component: <Dashboard /> },
 
   //
@@ -63,6 +62,7 @@ const authProtectedRoutes = [
   { path: "/finance/expenses", component: <Expenses /> },
   { path: "/finance/invoices", component: <Invoices /> },
   { path: "/finance/payments", component: <Payments /> },
+  { path: "/finance/refunds", component: <Refunds /> },
   { path: "/finance/utility-bills", component: <UtilityBills /> },
   { path: "/profile", component: <Profile /> },
   { path: "/change-password", component: <ChangePassword /> },

@@ -186,7 +186,7 @@ const buildBulkPayload = (rows) => {
 };
 
 const Units = () => {
-  document.title = "Units | Apartment Management";
+  document.title = "Units | Degaanly";
   const dispatch = useDispatch();
   const userAuth = useAuthUser();
   const organizationId = userAuth.businessId;

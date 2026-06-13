@@ -98,7 +98,7 @@ const InvoiceDetailCard = ({ title, children, icon: Icon, color = "primary" }) =
 );
 
 const Invoices = () => {
-  document.title = "Finance - Invoices | Apartment Management";
+  document.title = "Finance - Invoices | Degaanly";
   const dispatch = useDispatch();
 
   const financeSelector = createSelector(
@@ -761,7 +761,7 @@ export default Invoices;
 //   `${lease?.tenantId?.personalInfo?.firstName || ""} ${lease?.tenantId?.personalInfo?.lastName || ""}`.trim() || "Unknown tenant";
 
 // const Invoices = () => {
-//   document.title = "Finance - Invoices | Apartment Management";
+//   document.title = "Finance - Invoices | Degaanly";
 //   const dispatch = useDispatch();
 
 //   const financeSelector = createSelector(

@@ -36,34 +36,9 @@ import {
     FiTarget,
     FiZap,
 } from "react-icons/fi";
-import {
-    Chart as ChartJS,
-    CategoryScale,
-    LinearScale,
-    BarElement,
-    Title,
-    Tooltip,
-    Legend,
-    ArcElement,
-    PointElement,
-    LineElement,
-} from "chart.js";
-import { Bar, Pie, Line, Doughnut } from "react-chartjs-2";
 import BreadCrumb from "../../../Components/Common/BreadCrumb";
 import { ReportsAPI } from "../../../helpers/backend_helper";
 import { useDispatch } from "react-redux";
-
-ChartJS.register(
-    CategoryScale,
-    LinearScale,
-    BarElement,
-    Title,
-    Tooltip,
-    Legend,
-    ArcElement,
-    PointElement,
-    LineElement
-);
 
 const selectStyles = {
     control: (base) => ({
@@ -155,7 +130,7 @@ const FinancialMetricCard = ({ title, amount, color, percentage }) => (
 );
 
 const GeneralFinanceReport = () => {
-    document.title = "General Finance Report | Apartment Management";
+    document.title = "General Finance Report | Degaanly";
     const dispatch = useDispatch();
 
     const today = new Date();
@@ -207,172 +182,7 @@ const GeneralFinanceReport = () => {
         fetchReport();
     }, [fetchReport]);
 
-    // Prepare chart data
-    const chartData = useMemo(() => {
-        if (!reportData?.details) return null;
 
-        const incomeData = reportData.details.income || [];
-        const expenseData = reportData.details.expenses || [];
-
-        const dailyIncome = {};
-        const dailyExpenses = {};
-        const categoryTotals = {};
-
-        incomeData.forEach((item) => {
-            const date = new Date(item.periodDate);
-            const dayKey = date.toISOString().split("T")[0];
-            dailyIncome[dayKey] = (dailyIncome[dayKey] || 0) + (item.amount || 0);
-        });
-
-        expenseData.forEach((item) => {
-            const date = new Date(item.periodDate);
-            const dayKey = date.toISOString().split("T")[0];
-            dailyExpenses[dayKey] = (dailyExpenses[dayKey] || 0) + (item.amount || 0);
-
-            const category = item.category || "other";
-            categoryTotals[category] = (categoryTotals[category] || 0) + (item.amount || 0);
-        });
-
-        // Combine all dates
-        const allDates = [...new Set([...Object.keys(dailyIncome), ...Object.keys(dailyExpenses)])].sort();
-        const incomeByDate = allDates.map(date => dailyIncome[date] || 0);
-        const expensesByDate = allDates.map(date => dailyExpenses[date] || 0);
-
-        return {
-            dailyData: {
-                labels: allDates.map(d => formatDate(d)),
-                income: incomeByDate,
-                expenses: expensesByDate,
-            },
-            categoryTotals,
-            totalIncome: reportData.summary?.totalIncome || 0,
-            totalExpenses: reportData.summary?.totalExpenses || 0,
-            netProfit: reportData.summary?.netProfitOrLoss || 0,
-        };
-    }, [reportData]);
-
-    // Income vs Expenses Bar Chart
-    const barChartData = {
-        labels: chartData?.dailyData.labels || [],
-        datasets: [
-            {
-                label: "Income",
-                data: chartData?.dailyData.income || [],
-                backgroundColor: "rgba(16, 185, 129, 0.8)",
-                borderRadius: 8,
-            },
-            {
-                label: "Expenses",
-                data: chartData?.dailyData.expenses || [],
-                backgroundColor: "rgba(239, 68, 68, 0.8)",
-                borderRadius: 8,
-            },
-        ],
-    };
-
-    // Expense Category Pie Chart
-    const categoryPieData = {
-        labels: Object.keys(chartData?.categoryTotals || {}).map(
-            (key) => key.charAt(0).toUpperCase() + key.slice(1)
-        ),
-        datasets: [
-            {
-                data: Object.values(chartData?.categoryTotals || {}),
-                backgroundColor: ["#f59e0b", "#3b82f6", "#10b981", "#ef4444", "#8b5cf6"],
-                borderWidth: 0,
-            },
-        ],
-    };
-
-    // Profit/Loss Gauge Chart (Doughnut)
-    const profitLossData = {
-        labels: ["Net Profit", "Remaining"],
-        datasets: [
-            {
-                data: [
-                    chartData?.netProfit || 0,
-                    Math.max(0, (chartData?.totalIncome || 0) - (chartData?.netProfit || 0)),
-                ],
-                backgroundColor: ["#10b981", "#e2e8f0"],
-                borderWidth: 0,
-            },
-        ],
-    };
-
-    const chartOptions = {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-            legend: {
-                position: "top",
-                labels: {
-                    usePointStyle: true,
-                    boxWidth: 10,
-                },
-            },
-            tooltip: {
-                callbacks: {
-                    label: (context) => {
-                        let label = context.dataset.label || "";
-                        if (label) label += ": ";
-                        label += formatCurrency(context.parsed.y);
-                        return label;
-                    },
-                },
-            },
-        },
-        scales: {
-            y: {
-                ticks: {
-                    callback: (value) => formatCurrency(value),
-                },
-            },
-        },
-    };
-
-    const pieOptions = {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-            legend: {
-                position: "bottom",
-                labels: {
-                    usePointStyle: true,
-                },
-            },
-            tooltip: {
-                callbacks: {
-                    label: (context) => {
-                        const value = context.raw;
-                        const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                        const percentage = ((value / total) * 100).toFixed(1);
-                        return `${context.label}: ${formatCurrency(value)} (${percentage}%)`;
-                    },
-                },
-            },
-        },
-    };
-
-    const profitLossOptions = {
-        responsive: true,
-        maintainAspectRatio: false,
-        cutout: "70%",
-        plugins: {
-            legend: {
-                position: "bottom",
-            },
-            tooltip: {
-                callbacks: {
-                    label: (context) => {
-                        const value = context.raw;
-                        const total = chartData?.totalIncome || 0;
-                        const percentage = ((value / total) * 100).toFixed(1);
-                        return `${context.label}: ${formatCurrency(value)} (${percentage}%)`;
-                    },
-                },
-            },
-        },
-    };
 
     // Prepare data for tables
     const incomeRows = useMemo(() => {
@@ -480,78 +290,98 @@ const GeneralFinanceReport = () => {
         if (!printWindow) return;
 
         const summary = reportData?.summary || {};
-        const profitPercentage = ((summary.netProfitOrLoss / summary.totalIncome) * 100).toFixed(1);
-        const lossPercentage = ((Math.abs(summary.netProfitOrLoss) / summary.totalIncome) * 100).toFixed(1);
-
         const summaryHtml = `
-      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 30px;">
-        <div style="background: #f8f9fa; padding: 20px; border-radius: 12px; text-align: center;">
-          <div style="color: #6c757d; font-size: 12px;">Total Income</div>
-          <div style="font-size: 28px; font-weight: bold; color: #10b981;">${formatCurrency(summary.totalIncome)}</div>
-        </div>
-        <div style="background: #f8f9fa; padding: 20px; border-radius: 12px; text-align: center;">
-          <div style="color: #6c757d; font-size: 12px;">Total Expenses</div>
-          <div style="font-size: 28px; font-weight: bold; color: #ef4444;">${formatCurrency(summary.totalExpenses)}</div>
-        </div>
-        <div style="background: #f8f9fa; padding: 20px; border-radius: 12px; text-align: center;">
-          <div style="color: #6c757d; font-size: 12px;">Net ${summary.netProfitOrLoss >= 0 ? "Profit" : "Loss"}</div>
-          <div style="font-size: 28px; font-weight: bold; color: ${summary.netProfitOrLoss >= 0 ? "#10b981" : "#ef4444"};">
-            ${formatCurrency(Math.abs(summary.netProfitOrLoss))}
-          </div>
-          <div style="font-size: 12px; color: #6c757d;">${summary.netProfitOrLoss >= 0 ? profitPercentage : lossPercentage}% of income</div>
-        </div>
+      <div style="max-width: 500px; margin-bottom: 30px;">
+        <h3 style="font-size: 16px; margin-bottom: 12px; color: #0f172a; border-bottom: 2px solid #cbd5e1; padding-bottom: 6px;">Financial Summary</h3>
+        <table style="width: 100%; border-collapse: collapse; border: 1px solid #cbd5e1;">
+          <tbody>
+            <tr>
+              <td style="padding: 8px; border: 1px solid #cbd5e1; color: #64748b;">Total Income</td>
+              <td style="padding: 8px; border: 1px solid #cbd5e1; text-align: right; font-weight: bold; color: #10b981;">${formatCurrency(summary.totalIncome)}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px; border: 1px solid #cbd5e1; color: #64748b;">Total Expenses</td>
+              <td style="padding: 8px; border: 1px solid #cbd5e1; text-align: right; font-weight: bold; color: #ef4444;">${formatCurrency(summary.totalExpenses)}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px; border: 1px solid #cbd5e1; color: #64748b;">Net ${summary.netProfitOrLoss >= 0 ? "Profit" : "Loss"}</td>
+              <td style="padding: 8px; border: 1px solid #cbd5e1; text-align: right; font-weight: bold; color: ${summary.netProfitOrLoss >= 0 ? "#10b981" : "#ef4444"};">
+                ${formatCurrency(Math.abs(summary.netProfitOrLoss))}
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     `;
 
+        const totalIncomeVal = incomeRows.reduce((sum, row) => sum + (row.amount || 0), 0);
         const incomeTable = incomeRows.length > 0 ? `
       <h3 style="margin: 30px 0 20px 0; color: #10b981;">Income Transactions</h3>
-      <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px;">
+      <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px; border: 1px solid #cbd5e1;">
         <thead>
-          <tr style="background: #f8f9fa; border-bottom: 2px solid #e2e8f0;">
-            <th style="padding: 12px; text-align: left;">Date</th>
-            <th style="padding: 12px; text-align: left;">Reference</th>
-            <th style="padding: 12px; text-align: left;">Description</th>
-            <th style="padding: 12px; text-align: right;">Amount</th>
-            <th style="padding: 12px; text-align: center;">Status</th>
+          <tr style="background: #f8f9fa; border-bottom: 2px solid #cbd5e1;">
+            <th style="padding: 12px; text-align: center; border: 1px solid #cbd5e1; width: 60px;">SQN</th>
+            <th style="padding: 12px; text-align: left; border: 1px solid #cbd5e1;">Date</th>
+            <th style="padding: 12px; text-align: left; border: 1px solid #cbd5e1;">Reference</th>
+            <th style="padding: 12px; text-align: left; border: 1px solid #cbd5e1;">Description</th>
+            <th style="padding: 12px; text-align: right; border: 1px solid #cbd5e1;">Amount</th>
+            <th style="padding: 12px; text-align: center; border: 1px solid #cbd5e1;">Status</th>
            </tr>
         </thead>
         <tbody>
-          ${incomeRows.map(row => `
-            <tr style="border-bottom: 1px solid #e2e8f0;">
-              <td style="padding: 12px;">${formatDate(row.periodDate)}</td>
-              <td style="padding: 12px;">${row.reference}</td>
-              <td style="padding: 12px;">${row.notes || "-"}</td>
-              <td style="padding: 12px; text-align: right; font-weight: bold;">+${formatCurrency(row.amount)}</td>
-              <td style="padding: 12px; text-align: center;">${row.status || "Recorded"}</td>
+          ${incomeRows.map((row, idx) => `
+            <tr style="border-bottom: 1px solid #cbd5e1;">
+              <td style="padding: 12px; text-align: center; border: 1px solid #cbd5e1;">${idx + 1}</td>
+              <td style="padding: 12px; border: 1px solid #cbd5e1;">${formatDate(row.periodDate)}</td>
+              <td style="padding: 12px; border: 1px solid #cbd5e1;">${row.reference}</td>
+              <td style="padding: 12px; border: 1px solid #cbd5e1;">${row.notes || "-"}</td>
+              <td style="padding: 12px; text-align: right; font-weight: bold; border: 1px solid #cbd5e1; color: #10b981;">+${formatCurrency(row.amount)}</td>
+              <td style="padding: 12px; text-align: center; border: 1px solid #cbd5e1;">${row.status || "Recorded"}</td>
             </tr>
           `).join("")}
         </tbody>
+        <tfoot>
+          <tr style="background: #f8f9fa; font-weight: bold; border-top: 2px solid #64748b;">
+            <td colspan="4" style="padding: 12px; text-align: right; border: 1px solid #cbd5e1;">Total Income:</td>
+            <td style="padding: 12px; text-align: right; border: 1px solid #cbd5e1; color: #10b981;">+${formatCurrency(totalIncomeVal)}</td>
+            <td style="border: 1px solid #cbd5e1;"></td>
+          </tr>
+        </tfoot>
       </table>
     ` : "";
 
+        const totalExpensesVal = expenseRows.reduce((sum, row) => sum + (row.amount || 0), 0);
         const expenseTable = expenseRows.length > 0 ? `
       <h3 style="margin: 30px 0 20px 0; color: #ef4444;">Expense Transactions</h3>
-      <table style="width: 100%; border-collapse: collapse;">
+      <table style="width: 100%; border-collapse: collapse; border: 1px solid #cbd5e1;">
         <thead>
-          <tr style="background: #f8f9fa; border-bottom: 2px solid #e2e8f0;">
-            <th style="padding: 12px; text-align: left;">Date</th>
-            <th style="padding: 12px; text-align: left;">Reference</th>
-            <th style="padding: 12px; text-align: left;">Category</th>
-            <th style="padding: 12px; text-align: left;">Description</th>
-            <th style="padding: 12px; text-align: right;">Amount</th>
+          <tr style="background: #f8f9fa; border-bottom: 2px solid #cbd5e1;">
+            <th style="padding: 12px; text-align: center; border: 1px solid #cbd5e1; width: 60px;">SQN</th>
+            <th style="padding: 12px; text-align: left; border: 1px solid #cbd5e1;">Date</th>
+            <th style="padding: 12px; text-align: left; border: 1px solid #cbd5e1;">Reference</th>
+            <th style="padding: 12px; text-align: left; border: 1px solid #cbd5e1;">Category</th>
+            <th style="padding: 12px; text-align: left; border: 1px solid #cbd5e1;">Description</th>
+            <th style="padding: 12px; text-align: right; border: 1px solid #cbd5e1;">Amount</th>
            </tr>
         </thead>
         <tbody>
-          ${expenseRows.map(row => `
-            <tr style="border-bottom: 1px solid #e2e8f0;">
-              <td style="padding: 12px;">${formatDate(row.periodDate)}</td>
-              <td style="padding: 12px;">${row.reference}</td>
-              <td style="padding: 12px; text-transform: capitalize;">${row.category || "-"}</td>
-              <td style="padding: 12px;">${row.notes || "-"}</td>
-              <td style="padding: 12px; text-align: right; font-weight: bold;">-${formatCurrency(row.amount)}</td>
+          ${expenseRows.map((row, idx) => `
+            <tr style="border-bottom: 1px solid #cbd5e1;">
+              <td style="padding: 12px; text-align: center; border: 1px solid #cbd5e1;">${idx + 1}</td>
+              <td style="padding: 12px; border: 1px solid #cbd5e1;">${formatDate(row.periodDate)}</td>
+              <td style="padding: 12px; border: 1px solid #cbd5e1;">${row.reference}</td>
+              <td style="padding: 12px; text-transform: capitalize; border: 1px solid #cbd5e1;">${row.category || "-"}</td>
+              <td style="padding: 12px; border: 1px solid #cbd5e1;">${row.notes || "-"}</td>
+              <td style="padding: 12px; text-align: right; font-weight: bold; border: 1px solid #cbd5e1; color: #ef4444;">-${formatCurrency(row.amount)}</td>
             </tr>
           `).join("")}
         </tbody>
+        <tfoot>
+          <tr style="background: #f8f9fa; font-weight: bold; border-top: 2px solid #64748b;">
+            <td colspan="5" style="padding: 12px; text-align: right; border: 1px solid #cbd5e1;">Total Expenses:</td>
+            <td style="padding: 12px; text-align: right; border: 1px solid #cbd5e1; color: #ef4444;">-${formatCurrency(totalExpensesVal)}</td>
+          </tr>
+        </tfoot>
       </table>
     ` : "";
 
@@ -576,7 +406,7 @@ const GeneralFinanceReport = () => {
             .header {
               margin-bottom: 30px;
               padding-bottom: 20px;
-              border-bottom: 2px solid #e2e8f0;
+              border-bottom: 2px solid #cbd5e1;
             }
             .date {
               color: #64748b;
@@ -602,7 +432,7 @@ const GeneralFinanceReport = () => {
           ${incomeTable}
           ${expenseTable}
           <div style="margin-top: 30px; text-align: center; color: #64748b; font-size: 12px;">
-            Generated by Apartment Management System
+            Generated by Degaanly System
           </div>
         </body>
       </html>
@@ -701,118 +531,31 @@ const GeneralFinanceReport = () => {
                     </Card>
                 ) : reportData ? (
                     <>
-                        {/* Summary Stats Cards */}
+                        {/* Summary Table */}
                         <Row className="mb-4">
-                            <Col lg={4} md={12} className="mb-3">
-                                <StatCard
-                                    icon={FiTrendingUp}
-                                    title="Total Income"
-                                    value={formatCurrency(summary?.totalIncome || 0)}
-                                    color="success"
-                                    subtitle="All revenue sources"
-                                    trend="up"
-                                    trendValue="+100%"
-                                />
-                            </Col>
-                            <Col lg={4} md={12} className="mb-3">
-                                <StatCard
-                                    icon={FiTrendingDown}
-                                    title="Total Expenses"
-                                    value={formatCurrency(summary?.totalExpenses || 0)}
-                                    color="danger"
-                                    subtitle="Operational costs"
-                                    trend="down"
-                                    trendValue="-0%"
-                                />
-                            </Col>
-                            <Col lg={4} md={12} className="mb-3">
-                                <StatCard
-                                    icon={summary?.netProfitOrLoss >= 0 ? FiZap : FiAlertCircle}
-                                    title={summary?.netProfitOrLoss >= 0 ? "Net Profit" : "Net Loss"}
-                                    value={formatCurrency(Math.abs(summary?.netProfitOrLoss || 0))}
-                                    color={summary?.netProfitOrLoss >= 0 ? "success" : "danger"}
-                                    subtitle={`${profitPercentage}% of total income`}
-                                    trend={summary?.netProfitOrLoss >= 0 ? "up" : "down"}
-                                    trendValue={profitPercentage}
-                                />
-                            </Col>
-                        </Row>
-
-                        {/* Financial Metrics */}
-                        <Row className="mb-4">
-                            <Col lg={6} md={12} className="mb-3">
-                                <FinancialMetricCard
-                                    title="Profit Margin"
-                                    amount={summary?.netProfitOrLoss || 0}
-                                    color="success"
-                                    percentage={profitPercentage}
-                                />
-                            </Col>
-                            <Col lg={6} md={12} className="mb-3">
-                                <FinancialMetricCard
-                                    title="Expense Ratio"
-                                    amount={summary?.totalExpenses || 0}
-                                    color="danger"
-                                    percentage={summary?.totalIncome ? ((summary.totalExpenses / summary.totalIncome) * 100).toFixed(1) : 0}
-                                />
-                            </Col>
-                        </Row>
-
-                        {/* Charts Row */}
-                        <Row className="mb-4">
-                            <Col lg={8} className="mb-4">
+                            <Col md={6} className="mb-3">
                                 <Card className="border-0 shadow-sm h-100">
-                                    <CardHeader className="bg-white border-0 pt-4">
-                                        <div className="d-flex align-items-center">
-                                            <FiBarChart2 size={18} className="text-primary me-2" />
-                                            <h6 className="mb-0">Income vs Expenses Trend</h6>
-                                        </div>
-                                    </CardHeader>
-                                    <CardBody>
-                                        <div style={{ height: "350px" }}>
-                                            <Bar data={barChartData} options={chartOptions} />
-                                        </div>
-                                    </CardBody>
-                                </Card>
-                            </Col>
-                            <Col lg={4} className="mb-4">
-                                <Card className="border-0 shadow-sm h-100">
-                                    <CardHeader className="bg-white border-0 pt-4">
-                                        <div className="d-flex align-items-center">
-                                            <FiPieChart size={18} className="text-primary me-2" />
-                                            <h6 className="mb-0">Expense Breakdown</h6>
-                                        </div>
-                                    </CardHeader>
-                                    <CardBody>
-                                        <div style={{ height: "350px" }}>
-                                            <Pie data={categoryPieData} options={pieOptions} />
-                                        </div>
-                                    </CardBody>
-                                </Card>
-                            </Col>
-                        </Row>
-
-                        {/* Profit/Loss Gauge */}
-                        <Row className="mb-4">
-                            <Col lg={6} className="mx-auto">
-                                <Card className="border-0 shadow-sm">
-                                    <CardHeader className="bg-white border-0 pt-4 text-center">
-                                        <div className="d-flex align-items-center justify-content-center">
-                                            <FiTarget size={18} className="text-primary me-2" />
-                                            <h6 className="mb-0">Profit/Loss Analysis</h6>
-                                        </div>
-                                    </CardHeader>
-                                    <CardBody className="text-center">
-                                        <div style={{ height: "250px", width: "250px", margin: "0 auto" }}>
-                                            <Doughnut data={profitLossData} options={profitLossOptions} />
-                                        </div>
-                                        <div className="mt-3">
-                                            <h5 className={`fw-bold ${summary?.netProfitOrLoss >= 0 ? "text-success" : "text-danger"}`}>
-                                                {summary?.netProfitOrLoss >= 0 ? "Profitable Period" : "Loss Period"}
-                                            </h5>
-                                            <p className="text-muted small mb-0">
-                                                Net {summary?.netProfitOrLoss >= 0 ? "profit" : "loss"} of {formatCurrency(Math.abs(summary?.netProfitOrLoss || 0))}
-                                            </p>
+                                    <CardBody className="p-4">
+                                        <h5 className="mb-3">Report Summary</h5>
+                                        <div className="table-responsive">
+                                            <table className="table table-bordered mb-0" style={{ borderColor: "#cbd5e1" }}>
+                                                <tbody>
+                                                    <tr>
+                                                        <td className="text-muted" style={{ padding: "8px", border: "1px solid #cbd5e1" }}>Total Income</td>
+                                                        <td className="fw-bold text-success" style={{ padding: "8px", border: "1px solid #cbd5e1", textAlign: "right" }}>{formatCurrency(summary?.totalIncome || 0)}</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td className="text-muted" style={{ padding: "8px", border: "1px solid #cbd5e1" }}>Total Expenses</td>
+                                                        <td className="fw-bold text-danger" style={{ padding: "8px", border: "1px solid #cbd5e1", textAlign: "right" }}>{formatCurrency(summary?.totalExpenses || 0)}</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td className="text-muted" style={{ padding: "8px", border: "1px solid #cbd5e1" }}>Net Profit/Loss</td>
+                                                        <td className={`fw-bold ${summary?.netProfitOrLoss >= 0 ? "text-success" : "text-danger"}`} style={{ padding: "8px", border: "1px solid #cbd5e1", textAlign: "right" }}>
+                                                            {formatCurrency(summary?.netProfitOrLoss || 0)}
+                                                        </td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
                                         </div>
                                     </CardBody>
                                 </Card>
@@ -858,31 +601,72 @@ const GeneralFinanceReport = () => {
                                 </div>
                             </CardHeader>
                             <CardBody className="p-0">
-                                <DataTable
-                                    columns={columns}
-                                    data={displayRows}
-                                    pagination
-                                    responsive
-                                    highlightOnHover
-                                    pointerOnHover
-                                    className="border-0"
-                                    paginationPerPage={10}
-                                    paginationRowsPerPageOptions={[10, 25, 50]}
-                                    customStyles={{
-                                        headRow: {
-                                            style: {
-                                                backgroundColor: "#f8f9fa",
-                                                borderTop: "none",
-                                                fontWeight: 600,
-                                            },
-                                        },
-                                        rows: {
-                                            style: {
-                                                minHeight: "72px",
-                                            },
-                                        },
-                                    }}
-                                />
+                                <div className="table-responsive px-4 pb-4">
+                                    <table className="table table-bordered align-middle mb-0" style={{ borderColor: "#cbd5e1" }}>
+                                        <thead className="table-light">
+                                            <tr style={{ backgroundColor: "#f8f9fa", borderBottom: "2px solid #cbd5e1" }}>
+                                                <th style={{ padding: "12px", color: "#1e293b", fontWeight: 600, border: "1px solid #cbd5e1", width: "70px", textAlign: "center" }}>SQN</th>
+                                                <th style={{ padding: "12px", color: "#1e293b", fontWeight: 600, border: "1px solid #cbd5e1" }}>Date</th>
+                                                <th style={{ padding: "12px", color: "#1e293b", fontWeight: 600, border: "1px solid #cbd5e1" }}>Reference</th>
+                                                <th style={{ padding: "12px", color: "#1e293b", fontWeight: 600, border: "1px solid #cbd5e1" }}>Description</th>
+                                                <th style={{ padding: "12px", color: "#1e293b", fontWeight: 600, border: "1px solid #cbd5e1" }}>Amount</th>
+                                                <th style={{ padding: "12px", color: "#1e293b", fontWeight: 600, border: "1px solid #cbd5e1" }}>Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {displayRows.length > 0 ? (
+                                                displayRows.map((row, idx) => (
+                                                    <tr key={idx} style={{ borderBottom: "1px solid #cbd5e1" }}>
+                                                        <td style={{ padding: "12px", border: "1px solid #cbd5e1", textAlign: "center" }}>{idx + 1}</td>
+                                                        <td style={{ padding: "12px", border: "1px solid #cbd5e1" }}>
+                                                            <div className="fw-semibold">{formatDate(row.periodDate)}</div>
+                                                            {row.transactionType && (
+                                                                <small className="text-muted">{row.transactionType}</small>
+                                                            )}
+                                                        </td>
+                                                        <td style={{ padding: "12px", border: "1px solid #cbd5e1" }}>
+                                                            <div className="fw-semibold">{row.reference}</div>
+                                                            {row.category && (
+                                                                <small className="text-muted text-capitalize">{row.category}</small>
+                                                            )}
+                                                        </td>
+                                                        <td style={{ padding: "12px", border: "1px solid #cbd5e1" }}>
+                                                            <div>{row.notes || "-"}</div>
+                                                            {row.payee && <small className="text-muted">Payee: {row.payee}</small>}
+                                                        </td>
+                                                        <td style={{ padding: "12px", border: "1px solid #cbd5e1", fontWeight: "bold" }} className={row.type === "income" ? "text-success" : "text-danger"}>
+                                                            {row.type === "income" ? "+" : "-"}{formatCurrency(row.amount)}
+                                                        </td>
+                                                        <td style={{ padding: "12px", border: "1px solid #cbd5e1" }}>
+                                                            <Badge
+                                                                color={getStatusColor(row.status)}
+                                                                className="d-inline-flex align-items-center gap-1 px-3 py-2"
+                                                            >
+                                                                {getStatusIcon(row.status)}
+                                                                <span className="ms-1 text-capitalize">{row.status || "Recorded"}</span>
+                                                            </Badge>
+                                                        </td>
+                                                    </tr>
+                                                ))
+                                            ) : (
+                                                <tr>
+                                                    <td colSpan="6" className="text-center p-4 text-muted" style={{ border: "1px solid #cbd5e1" }}>
+                                                        No records found
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </tbody>
+                                        <tfoot style={{ borderTop: "2px solid #64748b" }}>
+                                            <tr style={{ backgroundColor: "#f8f9fa" }}>
+                                                <td colSpan="4" className="text-end fw-bold" style={{ padding: "12px", border: "1px solid #cbd5e1" }}>Net Profit/Loss:</td>
+                                                <td className={`fw-bold ${(displayRows.reduce((sum, row) => sum + (row.type === "income" ? row.amount : -row.amount), 0)) >= 0 ? "text-success" : "text-danger"}`} style={{ padding: "12px", border: "1px solid #cbd5e1" }}>
+                                                    {formatCurrency(displayRows.reduce((sum, row) => sum + (row.type === "income" ? row.amount : -row.amount), 0))}
+                                                </td>
+                                                <td style={{ border: "1px solid #cbd5e1" }}></td>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+                                </div>
                             </CardBody>
                         </Card>
                     </>

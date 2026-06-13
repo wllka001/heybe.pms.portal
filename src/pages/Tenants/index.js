@@ -53,7 +53,7 @@ const statusOptions = [
 ];
 
 const Tenants = () => {
-  document.title = "Tenants | Apartment Management";
+  document.title = "Tenants | Degaanly";
   const dispatch = useDispatch();
   const userAuth = useAuthUser();
   const organizationId = userAuth.businessId;
@@ -141,6 +141,7 @@ const Tenants = () => {
       nationalIdNumber: selectedTenant?.nationalIdNumber || "",
       passportNumber: selectedTenant?.passportNumber || "",
       isVerified: Boolean(selectedTenant?.isVerified),
+      beginningBalance: selectedTenant?.beginningBalance || 0,
     },
     validationSchema: Yup.object({
       buildingId: Yup.string().when([], {
@@ -157,6 +158,7 @@ const Tenants = () => {
         primaryPhone: Yup.string().required("Primary phone is required"),
         email: Yup.string().email("Invalid email").required("Email is required"),
       }),
+      beginningBalance: Yup.number().min(0, "Beginning balance must be positive").nullable(),
     }),
     onSubmit: async (values, { setSubmitting, resetForm }) => {
       const payload = {
@@ -188,6 +190,7 @@ const Tenants = () => {
         nationalIdNumber: values.nationalIdNumber?.trim() || undefined,
         passportNumber: values.passportNumber?.trim() || undefined,
         isVerified: Boolean(values.isVerified),
+        beginningBalance: Number(values.beginningBalance) || 0,
       };
       if (!selectedTenant?._id) {
         payload.buildingId = values.buildingId;
@@ -588,6 +591,23 @@ const Tenants = () => {
                 </FormGroup>
               </Col>
             </Row>
+            <Row>
+              <Col md={12}>
+                <FormGroup>
+                  <Label className="form-label">Beginning Balance</Label>
+                  <Input
+                    type="number"
+                    name="beginningBalance"
+                    value={formik.values.beginningBalance}
+                    onChange={formik.handleChange}
+                    onBlur={formik.handleBlur}
+                    invalid={formik.touched.beginningBalance && !!formik.errors.beginningBalance}
+                    placeholder="0.00"
+                  />
+                  <FormFeedback>{formik.errors.beginningBalance}</FormFeedback>
+                </FormGroup>
+              </Col>
+            </Row>
             <FormGroup className="mb-0">
               <Label className="form-label">Email *</Label>
               <Input
@@ -662,6 +682,16 @@ const Tenants = () => {
                 <Col md={6}>
                   <div className="fw-semibold">Email</div>
                   <div>{selectedTenant.contact?.email || "-"}</div>
+                </Col>
+              </Row>
+              <Row className="mb-3">
+                <Col md={6}>
+                  <div className="fw-semibold">Beginning Balance</div>
+                  <div>${Number(selectedTenant.beginningBalance || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
+                </Col>
+                <Col md={6}>
+                  <div className="fw-semibold">Tenant Code</div>
+                  <div>{selectedTenant.tenantCode || "-"}</div>
                 </Col>
               </Row>
               <h6 className="mb-2">Lease History</h6>

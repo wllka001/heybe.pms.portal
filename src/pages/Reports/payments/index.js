@@ -36,36 +36,11 @@ import {
     FiRotateCcw,
     FiXCircle,
 } from "react-icons/fi";
-import {
-    Chart as ChartJS,
-    CategoryScale,
-    LinearScale,
-    BarElement,
-    Title,
-    Tooltip,
-    Legend,
-    ArcElement,
-    PointElement,
-    LineElement,
-} from "chart.js";
-import { Bar, Pie, Doughnut, Line } from "react-chartjs-2";
 import BreadCrumb from "../../../Components/Common/BreadCrumb";
 import { ReportsAPI } from "../../../helpers/backend_helper";
 import { getBuildings as onGetBuildings, getLeases as onGetLeases } from "../../../slices/thunks";
 import { useDispatch, useSelector } from "react-redux";
 import { createSelector } from "reselect";
-
-ChartJS.register(
-    CategoryScale,
-    LinearScale,
-    BarElement,
-    Title,
-    Tooltip,
-    Legend,
-    ArcElement,
-    PointElement,
-    LineElement
-);
 
 const selectStyles = {
     control: (base) => ({
@@ -158,7 +133,7 @@ const StatCard = ({ icon: Icon, title, value, color, subtitle, trend }) => (
 );
 
 const PaymentReport = () => {
-    document.title = "Payment Report | Apartment Management";
+    document.title = "Payment Report | Degaanly";
     const dispatch = useDispatch();
 
     const buildingsSelector = createSelector((state) => state.Buildings, (s) => s.buildings || []);
@@ -242,239 +217,6 @@ const PaymentReport = () => {
         fetchReport();
     }, [fetchReport]);
 
-    // Prepare chart data
-    const chartData = useMemo(() => {
-        if (!reportData?.details) return null;
-
-        const statusAmounts = {
-            reconciled: 0,
-            verified: 0,
-            recorded: 0,
-            rejected: 0,
-            reversed: 0,
-        };
-        const statusCounts = {
-            reconciled: 0,
-            verified: 0,
-            recorded: 0,
-            rejected: 0,
-            reversed: 0,
-        };
-        const methodTotals = {};
-        const dailyTotals = {};
-        const tenantTotals = {};
-
-        reportData.details.forEach((payment) => {
-            const status = payment.lifecycle?.status?.toLowerCase() || "recorded";
-            statusAmounts[status] = (statusAmounts[status] || 0) + (payment.amount || 0);
-            statusCounts[status] = (statusCounts[status] || 0) + 1;
-
-            const method = payment.method?.toLowerCase() || "other";
-            methodTotals[method] = (methodTotals[method] || 0) + (payment.amount || 0);
-
-            const date = new Date(payment.paymentDate);
-            const dayKey = date.toISOString().split("T")[0];
-            dailyTotals[dayKey] = (dailyTotals[dayKey] || 0) + (payment.amount || 0);
-
-            const tenantName = payment.tenant?.fullName || "Unknown";
-            tenantTotals[tenantName] = (tenantTotals[tenantName] || 0) + (payment.amount || 0);
-        });
-
-        // Sort daily totals by date
-        const sortedDays = Object.keys(dailyTotals).sort();
-        const dailyData = sortedDays.map(day => ({
-            date: formatDate(day),
-            amount: dailyTotals[day]
-        }));
-
-        return {
-            statusAmounts,
-            statusCounts,
-            methodTotals,
-            dailyData,
-            tenantTotals: Object.entries(tenantTotals).slice(0, 10),
-        };
-    }, [reportData]);
-
-    // Status Distribution Pie Chart
-    const statusPieData = {
-        labels: Object.keys(chartData?.statusAmounts || {}).map(
-            (key) => key.toUpperCase()
-        ),
-        datasets: [
-            {
-                data: Object.values(chartData?.statusAmounts || {}),
-                backgroundColor: ["#10b981", "#3b82f6", "#f59e0b", "#ef4444", "#8b5cf6"],
-                borderWidth: 0,
-            },
-        ],
-    };
-
-    // Payment Method Pie Chart
-    const methodPieData = {
-        labels: Object.keys(chartData?.methodTotals || {}).map(
-            (key) => key.toUpperCase()
-        ),
-        datasets: [
-            {
-                data: Object.values(chartData?.methodTotals || {}),
-                backgroundColor: ["#3b82f6", "#10b981", "#f59e0b", "#8b5cf6"],
-                borderWidth: 0,
-            },
-        ],
-    };
-
-    // Daily Payment Trend Line Chart
-    const dailyLineData = {
-        labels: chartData?.dailyData.map(d => d.date) || [],
-        datasets: [
-            {
-                label: "Daily Payment Amount ($)",
-                data: chartData?.dailyData.map(d => d.amount) || [],
-                borderColor: "#3b82f6",
-                backgroundColor: "rgba(59, 130, 246, 0.1)",
-                fill: true,
-                tension: 0.4,
-                pointRadius: 4,
-                pointBackgroundColor: "#3b82f6",
-            },
-        ],
-    };
-
-    // Top Tenants Bar Chart
-    const tenantBarData = {
-        labels: chartData?.tenantTotals.map(([name]) => name.split(" ")[0]) || [],
-        datasets: [
-            {
-                label: "Total Payments ($)",
-                data: chartData?.tenantTotals.map(([, amount]) => amount) || [],
-                backgroundColor: "rgba(16, 185, 129, 0.8)",
-                borderRadius: 8,
-            },
-        ],
-    };
-
-    const chartOptions = {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-            legend: {
-                position: "top",
-                labels: {
-                    usePointStyle: true,
-                    boxWidth: 10,
-                },
-            },
-            tooltip: {
-                callbacks: {
-                    label: (context) => {
-                        let label = context.dataset.label || "";
-                        if (label) label += ": ";
-                        if (context.parsed.y !== undefined) {
-                            label += formatCurrency(context.parsed.y);
-                        } else {
-                            label += formatCurrency(context.parsed);
-                        }
-                        return label;
-                    },
-                },
-            },
-        },
-    };
-
-    const pieOptions = {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-            legend: {
-                position: "bottom",
-                labels: {
-                    usePointStyle: true,
-                },
-            },
-            tooltip: {
-                callbacks: {
-                    label: (context) => {
-                        const value = context.raw;
-                        const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                        const percentage = ((value / total) * 100).toFixed(1);
-                        return `${context.label}: ${formatCurrency(value)} (${percentage}%)`;
-                    },
-                },
-            },
-        },
-    };
-
-    const columns = [
-        {
-            name: "Payment",
-            cell: (row) => (
-                <div>
-                    <div className="fw-semibold mb-1">{row.paymentNumber}</div>
-                    <small className="text-muted">{formatDate(row.paymentDate)}</small>
-                </div>
-            ),
-        },
-        {
-            name: "Tenant/Unit",
-            cell: (row) => (
-                <div>
-                    <div className="fw-semibold">{row.tenant?.fullName || "-"}</div>
-                    <small className="text-muted">Unit {row.unit?.unitNumber || "-"}</small>
-                </div>
-            ),
-        },
-        {
-            name: "Invoice",
-            cell: (row) => (
-                <div>
-                    <div className="fw-semibold">{row.invoice?.invoiceNumber || "-"}</div>
-                    <small className="text-muted">{formatCurrency(row.invoice?.totalAmount)}</small>
-                </div>
-            ),
-        },
-        {
-            name: "Amount",
-            cell: (row) => (
-                <div className="fw-bold text-success">{formatCurrency(row.amount)}</div>
-            ),
-        },
-        {
-            name: "Method",
-            cell: (row) => (
-                <div className="d-flex align-items-center gap-2">
-                    {getMethodIcon(row.method)}
-                    <span className="text-capitalize">{row.method}</span>
-                    <small className="text-muted">{row.methodDetails?.evc?.referenceNumber || row.methodDetails?.bank?.transactionId || ""}</small>
-                </div>
-            ),
-        },
-        {
-            name: "Status",
-            cell: (row) => (
-                <Badge
-                    color={getStatusColor(row.lifecycle?.status)}
-                    className="d-inline-flex align-items-center gap-1 px-3 py-2"
-                >
-                    {getStatusIcon(row.lifecycle?.status)}
-                    <span className="ms-1 text-capitalize">{row.lifecycle?.status || "Recorded"}</span>
-                </Badge>
-            ),
-        },
-        {
-            name: "Allocation",
-            cell: (row) => (
-                <div>
-                    {row.allocation?.map((alloc, idx) => (
-                        <div key={idx} className="small">
-                            {alloc.itemType}: {formatCurrency(alloc.amount)}
-                        </div>
-                    ))}
-                </div>
-            ),
-        },
-    ];
-
     const filteredRows = useMemo(() => {
         if (!reportData?.details) return [];
         const keyword = searchText.trim().toLowerCase();
@@ -515,51 +257,63 @@ const PaymentReport = () => {
 
         const summary = reportData?.summary || {};
         const summaryHtml = `
-      <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 30px;">
-        <div style="background: #f8f9fa; padding: 20px; border-radius: 12px; text-align: center;">
-          <div style="color: #6c757d; font-size: 12px;">Total Payments</div>
-          <div style="font-size: 24px; font-weight: bold; color: #3b82f6;">${summary.totalPaymentsRecorded || 0}</div>
-        </div>
-        <div style="background: #f8f9fa; padding: 20px; border-radius: 12px; text-align: center;">
-          <div style="color: #6c757d; font-size: 12px;">Total Amount</div>
-          <div style="font-size: 24px; font-weight: bold; color: #10b981;">${formatCurrency(summary.totalRecordedAmount)}</div>
-        </div>
-        <div style="background: #f8f9fa; padding: 20px; border-radius: 12px; text-align: center;">
-          <div style="color: #6c757d; font-size: 12px;">Reconciled</div>
-          <div style="font-size: 24px; font-weight: bold; color: #10b981;">${formatCurrency(summary.totalReconciledAmount)}</div>
-        </div>
-        <div style="background: #f8f9fa; padding: 20px; border-radius: 12px; text-align: center;">
-          <div style="color: #6c757d; font-size: 12px;">Rejected/Reversed</div>
-          <div style="font-size: 24px; font-weight: bold; color: #ef4444;">${formatCurrency(summary.totalRejectedAmount + summary.totalReversedAmount)}</div>
-        </div>
+      <div style="max-width: 500px; margin-bottom: 30px;">
+        <h3 style="font-size: 16px; margin-bottom: 12px; color: #0f172a; border-bottom: 2px solid #cbd5e1; padding-bottom: 6px;">Report Summary</h3>
+        <table style="width: 100%; border-collapse: collapse; border: 1px solid #cbd5e1;">
+          <tbody>
+            <tr>
+              <td style="padding: 8px; border: 1px solid #cbd5e1; color: #64748b;">Total Payments</td>
+              <td style="padding: 8px; border: 1px solid #cbd5e1; text-align: right; font-weight: bold;">${summary.totalPaymentsRecorded || 0}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px; border: 1px solid #cbd5e1; color: #64748b;">Total Amount</td>
+              <td style="padding: 8px; border: 1px solid #cbd5e1; text-align: right; font-weight: bold; color: #10b981;">${formatCurrency(summary.totalRecordedAmount)}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px; border: 1px solid #cbd5e1; color: #64748b;">Reconciled</td>
+              <td style="padding: 8px; border: 1px solid #cbd5e1; text-align: right; font-weight: bold; color: #10b981;">${formatCurrency(summary.totalReconciledAmount)}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px; border: 1px solid #cbd5e1; color: #64748b;">Rejected/Reversed</td>
+              <td style="padding: 8px; border: 1px solid #cbd5e1; text-align: right; font-weight: bold; color: #ef4444;">${formatCurrency(summary.totalRejectedAmount + summary.totalReversedAmount)}</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     `;
 
+        const totalAmount = filteredRows.reduce((sum, row) => sum + (row.amount || 0), 0);
         const tableHtml = `
-      <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
+      <table style="width: 100%; border-collapse: collapse; margin-top: 20px; border: 1px solid #cbd5e1;">
         <thead>
-          <tr style="background: #f8f9fa; border-bottom: 2px solid #e2e8f0;">
-            <th style="padding: 12px; text-align: left;">Payment #</th>
-            <th style="padding: 12px; text-align: left;">Tenant</th>
-            <th style="padding: 12px; text-align: right;">Amount</th>
-            <th style="padding: 12px; text-align: center;">Method</th>
-            <th style="padding: 12px; text-align: center;">Status</th>
+          <tr style="background: #f8f9fa; border-bottom: 2px solid #cbd5e1;">
+            <th style="padding: 12px; text-align: center; border: 1px solid #cbd5e1; width: 60px;">SQN</th>
+            <th style="padding: 12px; text-align: left; border: 1px solid #cbd5e1;">Payment #</th>
+            <th style="padding: 12px; text-align: left; border: 1px solid #cbd5e1;">Tenant</th>
+            <th style="padding: 12px; text-align: left; border: 1px solid #cbd5e1;">Invoice</th>
+            <th style="padding: 12px; text-align: right; border: 1px solid #cbd5e1;">Amount</th>
+            <th style="padding: 12px; text-align: center; border: 1px solid #cbd5e1;">Method</th>
+            <th style="padding: 12px; text-align: center; border: 1px solid #cbd5e1;">Status</th>
            </tr>
         </thead>
         <tbody>
-          ${filteredRows.map((row) => `
-            <tr style="border-bottom: 1px solid #e2e8f0;">
-              <td style="padding: 12px;">
+          ${filteredRows.map((row, idx) => `
+            <tr style="border-bottom: 1px solid #cbd5e1;">
+              <td style="padding: 12px; text-align: center; border: 1px solid #cbd5e1;">${idx + 1}</td>
+              <td style="padding: 12px; border: 1px solid #cbd5e1;">
                 ${row.paymentNumber}<br/>
                 <small>${formatDate(row.paymentDate)}</small>
               </td>
-              <td style="padding: 12px;">
+              <td style="padding: 12px; border: 1px solid #cbd5e1;">
                 ${row.tenant?.fullName || "-"}<br/>
                 <small>Unit ${row.unit?.unitNumber || "-"}</small>
               </td>
-              <td style="padding: 12px; text-align: right; font-weight: bold;">${formatCurrency(row.amount)}</td>
-              <td style="padding: 12px; text-align: center;">${row.method?.toUpperCase() || "-"}</td>
-              <td style="padding: 12px; text-align: center;">
+              <td style="padding: 12px; border: 1px solid #cbd5e1;">
+                ${row.invoice?.invoiceNumber || "-"}
+              </td>
+              <td style="padding: 12px; text-align: right; font-weight: bold; border: 1px solid #cbd5e1; color: #10b981;">${formatCurrency(row.amount)}</td>
+              <td style="padding: 12px; text-align: center; border: 1px solid #cbd5e1;">${row.method?.toUpperCase() || "-"}</td>
+              <td style="padding: 12px; text-align: center; border: 1px solid #cbd5e1;">
                 <span style="background: ${row.lifecycle?.status === 'reconciled' ? '#d4edda' : row.lifecycle?.status === 'rejected' ? '#f8d7da' : '#fff3cd'}; padding: 4px 8px; border-radius: 4px;">
                   ${row.lifecycle?.status?.toUpperCase() || "RECORDED"}
                 </span>
@@ -567,6 +321,13 @@ const PaymentReport = () => {
             </tr>
           `).join("")}
         </tbody>
+        <tfoot>
+          <tr style="background: #f8f9fa; font-weight: bold; border-top: 2px solid #64748b;">
+            <td colspan="4" style="padding: 12px; text-align: right; border: 1px solid #cbd5e1;">Total:</td>
+            <td style="padding: 12px; text-align: right; border: 1px solid #cbd5e1; color: #10b981;">${formatCurrency(totalAmount)}</td>
+            <td colspan="2" style="border: 1px solid #cbd5e1;"></td>
+          </tr>
+        </tfoot>
       </table>
     `;
 
@@ -591,7 +352,7 @@ const PaymentReport = () => {
             .header {
               margin-bottom: 30px;
               padding-bottom: 20px;
-              border-bottom: 2px solid #e2e8f0;
+              border-bottom: 2px solid #cbd5e1;
             }
             .date {
               color: #64748b;
@@ -616,7 +377,7 @@ const PaymentReport = () => {
           ${summaryHtml}
           ${tableHtml}
           <div style="margin-top: 30px; text-align: center; color: #64748b; font-size: 12px;">
-            Generated by Apartment Management System
+            Generated by Degaanly System
           </div>
         </body>
       </html>
@@ -736,108 +497,33 @@ const PaymentReport = () => {
                     </Card>
                 ) : reportData ? (
                     <>
-                        {/* Summary Stats Cards */}
+                        {/* Summary Table */}
                         <Row className="mb-4">
-                            <Col lg={3} md={6} className="mb-3">
-                                <StatCard
-                                    icon={FiCreditCard}
-                                    title="Total Payments"
-                                    value={summary?.totalPaymentsRecorded || 0}
-                                    color="primary"
-                                    subtitle="Total transactions"
-                                />
-                            </Col>
-                            <Col lg={3} md={6} className="mb-3">
-                                <StatCard
-                                    icon={FiDollarSign}
-                                    title="Total Amount"
-                                    value={formatCurrency(summary?.totalRecordedAmount || 0)}
-                                    color="success"
-                                    subtitle="All payments"
-                                />
-                            </Col>
-                            <Col lg={3} md={6} className="mb-3">
-                                <StatCard
-                                    icon={FiThumbsUp}
-                                    title="Reconciled Amount"
-                                    value={formatCurrency(summary?.totalReconciledAmount || 0)}
-                                    color="info"
-                                    subtitle={`${((summary?.totalReconciledAmount / summary?.totalRecordedAmount) * 100).toFixed(1)}% reconciled`}
-                                />
-                            </Col>
-                            <Col lg={3} md={6} className="mb-3">
-                                <StatCard
-                                    icon={FiXCircle}
-                                    title="Rejected/Reversed"
-                                    value={formatCurrency((summary?.totalRejectedAmount || 0) + (summary?.totalReversedAmount || 0))}
-                                    color="danger"
-                                    subtitle="Failed transactions"
-                                />
-                            </Col>
-                        </Row>
-
-                        {/* Charts Row */}
-                        <Row className="mb-4">
-                            <Col lg={5} className="mb-4">
+                            <Col md={6} className="mb-3">
                                 <Card className="border-0 shadow-sm h-100">
-                                    <CardHeader className="bg-white border-0 pt-4">
-                                        <div className="d-flex align-items-center">
-                                            <FiPieChart size={18} className="text-primary me-2" />
-                                            <h6 className="mb-0">Payment Status Distribution</h6>
-                                        </div>
-                                    </CardHeader>
-                                    <CardBody>
-                                        <div style={{ height: "320px" }}>
-                                            <Pie data={statusPieData} options={pieOptions} />
-                                        </div>
-                                    </CardBody>
-                                </Card>
-                            </Col>
-                            <Col lg={7} className="mb-4">
-                                <Card className="border-0 shadow-sm h-100">
-                                    <CardHeader className="bg-white border-0 pt-4">
-                                        <div className="d-flex align-items-center">
-                                            <FiTrendingUp size={18} className="text-primary me-2" />
-                                            <h6 className="mb-0">Daily Payment Trend</h6>
-                                        </div>
-                                    </CardHeader>
-                                    <CardBody>
-                                        <div style={{ height: "320px" }}>
-                                            <Line data={dailyLineData} options={chartOptions} />
-                                        </div>
-                                    </CardBody>
-                                </Card>
-                            </Col>
-                        </Row>
-
-                        {/* Second Row Charts */}
-                        <Row className="mb-4">
-                            <Col lg={6} className="mb-4">
-                                <Card className="border-0 shadow-sm h-100">
-                                    <CardHeader className="bg-white border-0 pt-4">
-                                        <div className="d-flex align-items-center">
-                                            <FiBarChart2 size={18} className="text-primary me-2" />
-                                            <h6 className="mb-0">Payment Method Distribution</h6>
-                                        </div>
-                                    </CardHeader>
-                                    <CardBody>
-                                        <div style={{ height: "300px" }}>
-                                            <Doughnut data={methodPieData} options={pieOptions} />
-                                        </div>
-                                    </CardBody>
-                                </Card>
-                            </Col>
-                            <Col lg={6} className="mb-4">
-                                <Card className="border-0 shadow-sm h-100">
-                                    <CardHeader className="bg-white border-0 pt-4">
-                                        <div className="d-flex align-items-center">
-                                            <FiUsers size={18} className="text-primary me-2" />
-                                            <h6 className="mb-0">Top Tenants by Payment</h6>
-                                        </div>
-                                    </CardHeader>
-                                    <CardBody>
-                                        <div style={{ height: "300px" }}>
-                                            <Bar data={tenantBarData} options={chartOptions} />
+                                    <CardBody className="p-4">
+                                        <h5 className="mb-3">Report Summary</h5>
+                                        <div className="table-responsive">
+                                            <table className="table table-bordered mb-0" style={{ borderColor: "#cbd5e1" }}>
+                                                <tbody>
+                                                    <tr>
+                                                        <td className="text-muted" style={{ padding: "8px", border: "1px solid #cbd5e1" }}>Total Payments</td>
+                                                        <td className="fw-bold" style={{ padding: "8px", border: "1px solid #cbd5e1", textAlign: "right" }}>{summary?.totalPaymentsRecorded || 0}</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td className="text-muted" style={{ padding: "8px", border: "1px solid #cbd5e1" }}>Total Amount</td>
+                                                        <td className="fw-bold text-success" style={{ padding: "8px", border: "1px solid #cbd5e1", textAlign: "right" }}>{formatCurrency(summary?.totalRecordedAmount || 0)}</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td className="text-muted" style={{ padding: "8px", border: "1px solid #cbd5e1" }}>Reconciled</td>
+                                                        <td className="fw-bold text-success" style={{ padding: "8px", border: "1px solid #cbd5e1", textAlign: "right" }}>{formatCurrency(summary?.totalReconciledAmount || 0)}</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td className="text-muted" style={{ padding: "8px", border: "1px solid #cbd5e1" }}>Rejected/Reversed</td>
+                                                        <td className="fw-bold text-danger" style={{ padding: "8px", border: "1px solid #cbd5e1", textAlign: "right" }}>{formatCurrency((summary?.totalRejectedAmount || 0) + (summary?.totalReversedAmount || 0))}</td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
                                         </div>
                                     </CardBody>
                                 </Card>
@@ -861,31 +547,84 @@ const PaymentReport = () => {
                                 </div>
                             </CardHeader>
                             <CardBody className="p-0">
-                                <DataTable
-                                    columns={columns}
-                                    data={filteredRows}
-                                    pagination
-                                    responsive
-                                    highlightOnHover
-                                    pointerOnHover
-                                    className="border-0"
-                                    paginationPerPage={10}
-                                    paginationRowsPerPageOptions={[10, 25, 50]}
-                                    customStyles={{
-                                        headRow: {
-                                            style: {
-                                                backgroundColor: "#f8f9fa",
-                                                borderTop: "none",
-                                                fontWeight: 600,
-                                            },
-                                        },
-                                        rows: {
-                                            style: {
-                                                minHeight: "72px",
-                                            },
-                                        },
-                                    }}
-                                />
+                                <div className="table-responsive px-4 pb-4">
+                                    <table className="table table-bordered align-middle mb-0" style={{ borderColor: "#cbd5e1" }}>
+                                        <thead className="table-light">
+                                            <tr style={{ backgroundColor: "#f8f9fa", borderBottom: "2px solid #cbd5e1" }}>
+                                                <th style={{ padding: "12px", color: "#1e293b", fontWeight: 600, border: "1px solid #cbd5e1", width: "70px", textAlign: "center" }}>SQN</th>
+                                                <th style={{ padding: "12px", color: "#1e293b", fontWeight: 600, border: "1px solid #cbd5e1" }}>Payment</th>
+                                                <th style={{ padding: "12px", color: "#1e293b", fontWeight: 600, border: "1px solid #cbd5e1" }}>Tenant/Unit</th>
+                                                <th style={{ padding: "12px", color: "#1e293b", fontWeight: 600, border: "1px solid #cbd5e1" }}>Invoice</th>
+                                                <th style={{ padding: "12px", color: "#1e293b", fontWeight: 600, border: "1px solid #cbd5e1" }}>Amount</th>
+                                                <th style={{ padding: "12px", color: "#1e293b", fontWeight: 600, border: "1px solid #cbd5e1" }}>Method</th>
+                                                <th style={{ padding: "12px", color: "#1e293b", fontWeight: 600, border: "1px solid #cbd5e1" }}>Status</th>
+                                                <th style={{ padding: "12px", color: "#1e293b", fontWeight: 600, border: "1px solid #cbd5e1" }}>Allocation</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {filteredRows.length > 0 ? (
+                                                filteredRows.map((row, rowIdx) => (
+                                                    <tr key={row._id} style={{ borderBottom: "1px solid #cbd5e1" }}>
+                                                        <td style={{ padding: "12px", border: "1px solid #cbd5e1", textAlign: "center" }}>{rowIdx + 1}</td>
+                                                        <td style={{ padding: "12px", border: "1px solid #cbd5e1" }}>
+                                                            <div className="fw-semibold mb-1">{row.paymentNumber}</div>
+                                                            <small className="text-muted">{formatDate(row.paymentDate)}</small>
+                                                        </td>
+                                                        <td style={{ padding: "12px", border: "1px solid #cbd5e1" }}>
+                                                            <div className="fw-semibold">{row.tenant?.fullName || "-"}</div>
+                                                            <small className="text-muted">Unit {row.unit?.unitNumber || "-"}</small>
+                                                        </td>
+                                                        <td style={{ padding: "12px", border: "1px solid #cbd5e1" }}>
+                                                            <div className="fw-semibold">{row.invoice?.invoiceNumber || "-"}</div>
+                                                            <small className="text-muted">{formatCurrency(row.invoice?.totalAmount)}</small>
+                                                        </td>
+                                                        <td style={{ padding: "12px", border: "1px solid #cbd5e1", fontWeight: "bold" }} className="text-success">
+                                                            {formatCurrency(row.amount)}
+                                                        </td>
+                                                        <td style={{ padding: "12px", border: "1px solid #cbd5e1" }}>
+                                                            <div className="d-flex align-items-center gap-2">
+                                                                {getMethodIcon(row.method)}
+                                                                <span className="text-capitalize">{row.method}</span>
+                                                                <small className="text-muted">{row.methodDetails?.evc?.referenceNumber || row.methodDetails?.bank?.transactionId || ""}</small>
+                                                            </div>
+                                                        </td>
+                                                        <td style={{ padding: "12px", border: "1px solid #cbd5e1" }}>
+                                                            <Badge
+                                                                color={getStatusColor(row.lifecycle?.status)}
+                                                                className="d-inline-flex align-items-center gap-1 px-3 py-2"
+                                                            >
+                                                                {getStatusIcon(row.lifecycle?.status)}
+                                                                <span className="ms-1 text-capitalize">{row.lifecycle?.status || "Recorded"}</span>
+                                                            </Badge>
+                                                        </td>
+                                                        <td style={{ padding: "12px", border: "1px solid #cbd5e1" }}>
+                                                            {row.allocation?.map((alloc, idx) => (
+                                                                <div key={idx} className="small text-muted" style={{ fontSize: "11px" }}>
+                                                                    {alloc.itemType}: {formatCurrency(alloc.amount)}
+                                                                </div>
+                                                            ))}
+                                                        </td>
+                                                    </tr>
+                                                ))
+                                            ) : (
+                                                <tr>
+                                                    <td colSpan="8" className="text-center p-4 text-muted" style={{ border: "1px solid #cbd5e1" }}>
+                                                        No records found
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </tbody>
+                                        <tfoot style={{ borderTop: "2px solid #64748b" }}>
+                                            <tr style={{ backgroundColor: "#f8f9fa" }}>
+                                                <td colSpan="4" className="text-end fw-bold" style={{ padding: "12px", border: "1px solid #cbd5e1" }}>Total:</td>
+                                                <td className="fw-bold text-success" style={{ padding: "12px", border: "1px solid #cbd5e1" }}>
+                                                    {formatCurrency(filteredRows.reduce((sum, row) => sum + (row.amount || 0), 0))}
+                                                </td>
+                                                <td colSpan="3" style={{ border: "1px solid #cbd5e1" }}></td>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+                                </div>
                             </CardBody>
                         </Card>
                     </>

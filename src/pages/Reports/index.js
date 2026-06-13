@@ -60,10 +60,10 @@ const formatCurrency = (amount) => `$${Number(amount || 0).toLocaleString()}`;
 const formatDate = (date) =>
   date
     ? new Date(date).toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-      })
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    })
     : "-";
 
 const buildColumnName = (key) =>
@@ -111,7 +111,7 @@ const normalizeRows = (payload) => {
 };
 
 const Reports = () => {
-  document.title = "Reports | Apartment Management";
+  document.title = "Reports | Degaanly";
   const dispatch = useDispatch();
 
   const buildingsSelector = createSelector((state) => state.Buildings, (s) => s.buildings || []);
@@ -211,17 +211,20 @@ const Reports = () => {
 
   const summaryRows = useMemo(() => {
     const source = reportData?.summary || {};
-    return Object.entries(source).map(([key, value]) => ({
-      label: buildColumnName(key),
-      value: typeof value === "number" ? formatCurrency(value) : Array.isArray(value) ? value.length : String(flattenValue(value)),
-    }));
+    return Object.entries(source)
+      .map(([key, value]) => ({
+        label: buildColumnName(key),
+        value: typeof value === "number" ? formatCurrency(value) : Array.isArray(value) ? value.length : String(flattenValue(value)),
+      }))
+      .filter((item) => !item.label.includes("%") && !item.label.toLowerCase().includes("rate"));
   }, [reportData]);
 
   const exportRows = useMemo(
     () =>
-      filteredRows.map((row) =>
-        Object.fromEntries(Object.entries(row).slice(0, 10).map(([key, value]) => [buildColumnName(key), flattenValue(value)])),
-      ),
+      filteredRows.map((row, idx) => ({
+        "SQN": idx + 1,
+        ...Object.fromEntries(Object.entries(row).slice(0, 10).map(([key, value]) => [buildColumnName(key), flattenValue(value)])),
+      })),
     [filteredRows],
   );
 
@@ -260,9 +263,9 @@ const Reports = () => {
       tableRows:
         activeTab === "summary"
           ? summaryRows.map((item) => ({
-              Metric: item.label,
-              Value: item.value,
-            }))
+            Metric: item.label,
+            Value: item.value,
+          }))
           : exportRows,
     });
 
@@ -424,31 +427,96 @@ const Reports = () => {
                 </div>
                 <TabContent activeTab={activeTab}>
                   <TabPane tabId="summary">
-                    <div className="p-4">
-                      <Row>
-                        {summaryRows.map((item) => (
-                          <Col lg={3} md={6} className="mb-3" key={item.label}>
-                            <Card className="border shadow-sm h-100 mb-0">
-                              <CardBody className="p-4">
-                                <div className="text-muted small mb-2">{item.label}</div>
-                                <div className="fw-bold fs-4">{item.value}</div>
-                              </CardBody>
-                            </Card>
-                          </Col>
-                        ))}
-                      </Row>
+                    <div className="p-4" style={{ maxWidth: "600px" }}>
+                      <div className="table-responsive">
+                        <table className="table table-bordered mb-0" style={{ borderColor: "#cbd5e1" }}>
+                          <thead>
+                            <tr style={{ backgroundColor: "#f8f9fa", borderBottom: "2px solid #cbd5e1" }}>
+                              <th style={{ padding: "12px", color: "#1e293b", fontWeight: 600, border: "1px solid #cbd5e1" }}>Metric</th>
+                              <th style={{ padding: "12px", color: "#1e293b", fontWeight: 600, border: "1px solid #cbd5e1", textAlign: "right" }}>Value</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {summaryRows.map((item) => (
+                              <tr key={item.label}>
+                                <td style={{ padding: "12px", border: "1px solid #cbd5e1" }} className="text-muted">{item.label}</td>
+                                <td style={{ padding: "12px", border: "1px solid #cbd5e1", textAlign: "right", fontWeight: "bold" }} className="text-primary">{item.value}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
                   </TabPane>
                   <TabPane tabId="details">
-                    <DataTable
-                      columns={columns}
-                      data={filteredRows}
-                      pagination
-                      responsive
-                      highlightOnHover
-                      pointerOnHover
-                      className="border-0"
-                    />
+                    <div className="table-responsive px-4 pb-4">
+                      <table className="table table-bordered align-middle mb-0" style={{ borderColor: "#cbd5e1" }}>
+                        <thead className="table-light">
+                          <tr style={{ backgroundColor: "#f8f9fa", borderBottom: "2px solid #cbd5e1" }}>
+                            <th style={{ padding: "12px", color: "#1e293b", fontWeight: 600, border: "1px solid #cbd5e1", width: "70px", textAlign: "center" }}>SQN</th>
+                            {columns.map((col, idx) => (
+                              <th key={idx} style={{ padding: "12px", color: "#1e293b", fontWeight: 600, border: "1px solid #cbd5e1" }}>
+                                {col.name}
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {filteredRows.length > 0 ? (
+                            filteredRows.map((row, rowIdx) => (
+                              <tr key={rowIdx} style={{ borderBottom: "1px solid #cbd5e1" }}>
+                                <td style={{ padding: "12px", border: "1px solid #cbd5e1", textAlign: "center" }}>{rowIdx + 1}</td>
+                                {Object.keys(filteredRows[0]).slice(0, 8).map((key, colIdx) => {
+                                  const val = flattenValue(row[key]);
+                                  const isNumeric = typeof row[key] === "number" || (!isNaN(row[key]) && !isNaN(parseFloat(row[key])) && typeof row[key] !== "object" && typeof row[key] !== "boolean");
+                                  return (
+                                    <td
+                                      key={colIdx}
+                                      style={{
+                                        padding: "12px",
+                                        border: "1px solid #cbd5e1",
+                                        textAlign: isNumeric ? "right" : "left",
+                                        fontWeight: isNumeric ? "bold" : "normal"
+                                      }}
+                                    >
+                                      {isNumeric && typeof row[key] === "number" ? formatCurrency(row[key]) : String(val)}
+                                    </td>
+                                  );
+                                })}
+                              </tr>
+                            ))
+                          ) : (
+                            <tr>
+                              <td colSpan={(columns.length || 0) + 1} className="text-center p-4 text-muted" style={{ border: "1px solid #cbd5e1" }}>
+                                No records found
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                        {filteredRows.length > 0 && (
+                          <tfoot style={{ borderTop: "2px solid #64748b" }}>
+                            <tr style={{ backgroundColor: "#f8f9fa" }}>
+                              <td className="fw-bold" style={{ padding: "12px", border: "1px solid #cbd5e1" }}>Total:</td>
+                              {Object.keys(filteredRows[0]).slice(0, 8).map((key, colIdx) => {
+                                const sampleVal = filteredRows[0][key];
+                                const isNumeric = typeof sampleVal === "number" || (!isNaN(sampleVal) && !isNaN(parseFloat(sampleVal)) && typeof sampleVal !== "object" && typeof sampleVal !== "boolean");
+
+                                if (isNumeric) {
+                                  const sum = filteredRows.reduce((acc, r) => acc + (Number(r[key]) || 0), 0);
+                                  return (
+                                    <td key={colIdx} className="fw-bold text-end" style={{ padding: "12px", border: "1px solid #cbd5e1" }}>
+                                      {formatCurrency(sum)}
+                                    </td>
+                                  );
+                                }
+
+                                return <td key={colIdx} style={{ border: "1px solid #cbd5e1" }}></td >;
+                              })}
+                            </tr>
+                          </tfoot>
+                        )}
+                      </table>
+                    </div>
                   </TabPane>
                 </TabContent>
               </CardBody>

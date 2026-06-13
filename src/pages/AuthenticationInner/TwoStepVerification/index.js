@@ -254,7 +254,7 @@ const TwosVerify = () => {
                                 <div className="text-center">
                                     <p className="mb-0">
                                         &copy; {new Date().getFullYear()} Crafted with{" "}
-                                        <i className="mdi mdi-heart text-danger"></i> by apartment
+                                        <i className="mdi mdi-heart text-danger"></i> by degaanly
                                     </p>
                                 </div>
                             </Col>

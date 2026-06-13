@@ -62,7 +62,7 @@ const priorityOptions = [
 ];
 
 const Maintenance = () => {
-  document.title = "Maintenance | Apartment Management";
+  document.title = "Maintenance | Degaanly";
   const dispatch = useDispatch();
 
   const maintenanceSelector = createSelector(
@@ -283,7 +283,7 @@ const Maintenance = () => {
           }}
           classNamePrefix="select"
           menuPortalTarget={document.body}
-          styles={{ 
+          styles={{
             menuPortal: (base) => ({ ...base, zIndex: 9999 }),
             control: (base) => ({
               ...base,

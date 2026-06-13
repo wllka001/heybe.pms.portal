@@ -31,21 +31,8 @@ import {
     FiRefreshCw,
     FiUser,
 } from "react-icons/fi";
-import {
-    ArcElement,
-    BarElement,
-    CategoryScale,
-    Chart as ChartJS,
-    Legend,
-    LinearScale,
-    Title,
-    Tooltip,
-} from "chart.js";
-import { Bar, Doughnut } from "react-chartjs-2";
 import BreadCrumb from "../../../Components/Common/BreadCrumb";
 import { ReportsAPI, TenantsAPI } from "../../../helpers/backend_helper";
-
-ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement);
 
 const selectStyles = {
     control: (base) => ({
@@ -84,7 +71,7 @@ const StatCard = ({ icon: Icon, title, value, color, subtitle }) => (
 );
 
 const TenantBalanceReport = () => {
-    document.title = "Tenant Balance Report | Apartment Management";
+    document.title = "Tenant Balance Report | Degaanly";
 
     const [reportData, setReportData] = useState(null);
     const [loading, setLoading] = useState(false);
@@ -150,83 +137,22 @@ const TenantBalanceReport = () => {
 
     const summary = useMemo(() => {
         const totalInvoiced = Number(selectedRow?.totalInvoiced || 0);
+        const beginningBalance = Number(selectedRow?.beginningBalance || 0);
+        const securityDeposit = Number(selectedRow?.securityDeposit || 0);
+        const totalOwed = totalInvoiced + beginningBalance + securityDeposit;
+
         const totalPaid = Number(selectedRow?.totalPaid || 0);
         const outstandingBalance = Number(selectedRow?.outstandingBalance || 0);
 
         return {
-            totalInvoiced,
+            totalInvoiced: totalOwed,
             totalPaid,
             outstandingBalance,
-            collectionRate: totalInvoiced > 0 ? (totalPaid / totalInvoiced) * 100 : 0,
+            collectionRate: totalOwed > 0 ? (totalPaid / totalOwed) * 100 : 0,
         };
     }, [selectedRow]);
 
-    const comparisonChartData = useMemo(
-        () => ({
-            labels: ["Invoiced", "Reconciled Paid", "Outstanding"],
-            datasets: [
-                {
-                    data: [summary.totalInvoiced, summary.totalPaid, summary.outstandingBalance],
-                    backgroundColor: ["rgba(59, 130, 246, 0.85)", "rgba(16, 185, 129, 0.85)", "rgba(239, 68, 68, 0.85)"],
-                    borderRadius: 10,
-                },
-            ],
-        }),
-        [summary],
-    );
 
-    const collectionChartData = useMemo(
-        () => ({
-            labels: ["Reconciled Paid", "Outstanding"],
-            datasets: [
-                {
-                    data: [summary.totalPaid, summary.outstandingBalance],
-                    backgroundColor: ["#10b981", "#ef4444"],
-                    borderWidth: 0,
-                },
-            ],
-        }),
-        [summary],
-    );
-
-    const chartOptions = {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-            legend: { display: false },
-            tooltip: {
-                callbacks: {
-                    label: (context) => formatCurrency(context.parsed.y ?? context.parsed),
-                },
-            },
-        },
-        scales: {
-            y: {
-                ticks: {
-                    callback: (value) => formatCurrency(value),
-                },
-            },
-        },
-    };
-
-    const doughnutOptions = {
-        responsive: true,
-        maintainAspectRatio: false,
-        cutout: "65%",
-        plugins: {
-            legend: { position: "bottom" },
-            tooltip: {
-                callbacks: {
-                    label: (context) => {
-                        const value = Number(context.raw || 0);
-                        const total = summary.totalInvoiced || 0;
-                        const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : "0.0";
-                        return `${context.label}: ${formatCurrency(value)} (${percentage}%)`;
-                    },
-                },
-            },
-        },
-    };
 
     const columns = [
         {
@@ -248,12 +174,40 @@ const TenantBalanceReport = () => {
             ),
         },
         {
-            name: "Invoiced",
-            cell: (row) => <div className="fw-semibold">{formatCurrency(row.totalInvoiced)}</div>,
+            name: "Invoiced / Owed",
+            cell: (row) => {
+                const totalOwed = (row.totalInvoiced || 0) + (row.beginningBalance || 0) + (row.securityDeposit || 0);
+                return (
+                    <div>
+                        <div className="fw-semibold">{formatCurrency(totalOwed)}</div>
+                        <small className="text-muted d-block">Invoices: {formatCurrency(row.totalInvoiced)}</small>
+                        {(row.beginningBalance || 0) > 0 && (
+                            <small className="text-muted d-block">Beg. Balance: {formatCurrency(row.beginningBalance)}</small>
+                        )}
+                        {(row.securityDeposit || 0) > 0 && (
+                            <small className="text-muted d-block">Sec. Deposit: {formatCurrency(row.securityDeposit)}</small>
+                        )}
+                    </div>
+                );
+            },
         },
         {
             name: "Reconciled Paid",
-            cell: (row) => <div className="fw-semibold text-success">{formatCurrency(row.totalPaid)}</div>,
+            cell: (row) => {
+                const invoicePaid = (row.totalPaid || 0) - (row.depositPaid || 0) - (row.beginningBalancePaid || 0);
+                return (
+                    <div>
+                        <div className="fw-semibold text-success">{formatCurrency(row.totalPaid)}</div>
+                        <small className="text-muted d-block">Invoices: {formatCurrency(invoicePaid)}</small>
+                        {(row.beginningBalancePaid || 0) > 0 && (
+                            <small className="text-muted d-block">Beg. Balance: {formatCurrency(row.beginningBalancePaid)}</small>
+                        )}
+                        {(row.depositPaid || 0) > 0 && (
+                            <small className="text-muted d-block">Sec. Deposit: {formatCurrency(row.depositPaid)}</small>
+                        )}
+                    </div>
+                );
+            },
         },
         {
             name: "Balance",
@@ -266,7 +220,8 @@ const TenantBalanceReport = () => {
         {
             name: "Collection Rate",
             cell: (row) => {
-                const rate = row.totalInvoiced > 0 ? (row.totalPaid / row.totalInvoiced) * 100 : 0;
+                const totalOwed = (row.totalInvoiced || 0) + (row.beginningBalance || 0) + (row.securityDeposit || 0);
+                const rate = totalOwed > 0 ? (row.totalPaid / totalOwed) * 100 : 0;
 
                 return (
                     <div style={{ minWidth: "120px" }}>
@@ -284,19 +239,25 @@ const TenantBalanceReport = () => {
 
     const exportRows = selectedRow
         ? [
-              {
-                  Tenant: selectedRow.tenant?.fullName || selectedTenant?.label || "Unknown Tenant",
-                  "Tenant Code": selectedRow.tenant?.tenantCode || "-",
-                  Lease: selectedRow.lease?.leaseNumber || "-",
-                  Phone: selectedRow.tenant?.phone || "-",
-                  Email: selectedRow.tenant?.email || "-",
-                  "Date Filter": formatDateRange(dateRange.from, dateRange.to),
-                  "Total Invoiced": selectedRow.totalInvoiced || 0,
-                  "Reconciled Paid": selectedRow.totalPaid || 0,
-                  "Outstanding Balance": selectedRow.outstandingBalance || 0,
-                  "Collection Rate": `${summary.collectionRate.toFixed(1)}%`,
-              },
-          ]
+            {
+                Tenant: selectedRow.tenant?.fullName || selectedTenant?.label || "Unknown Tenant",
+                "Tenant Code": selectedRow.tenant?.tenantCode || "-",
+                Lease: selectedRow.lease?.leaseNumber || "-",
+                Phone: selectedRow.tenant?.phone || "-",
+                Email: selectedRow.tenant?.email || "-",
+                "Date Filter": formatDateRange(dateRange.from, dateRange.to),
+                "Invoices (Owed)": selectedRow.totalInvoiced || 0,
+                "Beg. Balance (Owed)": selectedRow.beginningBalance || 0,
+                "Sec. Deposit (Owed)": selectedRow.securityDeposit || 0,
+                "Total Owed": (selectedRow.totalInvoiced || 0) + (selectedRow.beginningBalance || 0) + (selectedRow.securityDeposit || 0),
+                "Invoices (Paid)": (selectedRow.totalPaid || 0) - (selectedRow.depositPaid || 0) - (selectedRow.beginningBalancePaid || 0),
+                "Beg. Balance (Paid)": selectedRow.beginningBalancePaid || 0,
+                "Sec. Deposit (Paid)": selectedRow.depositPaid || 0,
+                "Total Reconciled Paid": selectedRow.totalPaid || 0,
+                "Outstanding Balance": selectedRow.outstandingBalance || 0,
+                "Collection Rate": `${summary.collectionRate.toFixed(1)}%`,
+            },
+        ]
         : [];
 
     const printReport = () => {
@@ -304,6 +265,30 @@ const TenantBalanceReport = () => {
 
         const printWindow = window.open("", "_blank", "width=1100,height=800");
         if (!printWindow) return;
+
+        const summaryHtml = `
+            <div style="max-width: 500px; margin-bottom: 30px;">
+                <h3 style="font-size: 16px; margin-bottom: 12px; color: #0f172a; border-bottom: 2px solid #cbd5e1; padding-bottom: 6px;">Report Summary</h3>
+                <table style="width: 100%; border-collapse: collapse; border: 1px solid #cbd5e1;">
+                    <tbody>
+                        <tr>
+                            <td style="padding: 8px; border: 1px solid #cbd5e1; color: #64748b;">Total Invoiced / Owed</td>
+                            <td style="padding: 8px; border: 1px solid #cbd5e1; text-align: right; font-weight: bold;">${formatCurrency(summary.totalInvoiced)}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 8px; border: 1px solid #cbd5e1; color: #64748b;">Reconciled Paid</td>
+                            <td style="padding: 8px; border: 1px solid #cbd5e1; text-align: right; font-weight: bold; color: #10b981;">${formatCurrency(summary.totalPaid)}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 8px; border: 1px solid #cbd5e1; color: #64748b;">Outstanding</td>
+                            <td style="padding: 8px; border: 1px solid #cbd5e1; text-align: right; font-weight: bold; color: #ef4444;">${formatCurrency(summary.outstandingBalance)}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        `;
+
+        const printInvoicePaid = (selectedRow.totalPaid || 0) - (selectedRow.depositPaid || 0) - (selectedRow.beginningBalancePaid || 0);
 
         printWindow.document.write(`
             <!DOCTYPE html>
@@ -314,41 +299,54 @@ const TenantBalanceReport = () => {
                         body { font-family: 'Segoe UI', system-ui, sans-serif; padding: 32px; color: #1e293b; }
                         h1 { margin-bottom: 8px; }
                         .muted { color: #64748b; font-size: 14px; }
-                        .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin: 24px 0; }
-                        .card { background: #f8fafc; border-radius: 12px; padding: 16px; }
-                        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-                        th, td { padding: 12px; border-bottom: 1px solid #e2e8f0; text-align: left; }
+                        table { width: 100%; border-collapse: collapse; margin-top: 20px; border: 1px solid #cbd5e1; }
+                        th, td { padding: 12px; border: 1px solid #cbd5e1; text-align: left; }
                     </style>
                 </head>
                 <body>
                     <h1>Tenant Balance Report</h1>
                     <div class="muted">Tenant: ${selectedRow.tenant?.fullName || selectedTenant?.label || "Unknown Tenant"}</div>
                     <div class="muted">Date Filter: ${formatDateRange(dateRange.from, dateRange.to)}</div>
-                    <div class="grid">
-                        <div class="card"><div class="muted">Total Invoiced</div><strong>${formatCurrency(summary.totalInvoiced)}</strong></div>
-                        <div class="card"><div class="muted">Reconciled Paid</div><strong>${formatCurrency(summary.totalPaid)}</strong></div>
-                        <div class="card"><div class="muted">Outstanding</div><strong>${formatCurrency(summary.outstandingBalance)}</strong></div>
-                        <div class="card"><div class="muted">Collection Rate</div><strong>${summary.collectionRate.toFixed(1)}%</strong></div>
-                    </div>
+                    ${summaryHtml}
                     <table>
                         <thead>
-                            <tr>
+                            <tr style="background: #f8f9fa;">
+                                <th style="width: 60px; text-align: center;">SQN</th>
                                 <th>Lease</th>
                                 <th>Contact</th>
-                                <th>Invoiced</th>
-                                <th>Reconciled Paid</th>
+                                <th>Invoiced / Owed Details</th>
+                                <th>Reconciled Paid Details</th>
                                 <th>Balance</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr>
+                                <td style="text-align: center;">1</td>
                                 <td>${selectedRow.lease?.leaseNumber || "-"}</td>
                                 <td>${selectedRow.tenant?.phone || "-"}<br/><small>${selectedRow.tenant?.email || "-"}</small></td>
-                                <td>${formatCurrency(selectedRow.totalInvoiced)}</td>
-                                <td>${formatCurrency(selectedRow.totalPaid)}</td>
-                                <td>${formatCurrency(selectedRow.outstandingBalance)}</td>
+                                <td>
+                                    <strong>${formatCurrency((selectedRow.totalInvoiced || 0) + (selectedRow.beginningBalance || 0) + (selectedRow.securityDeposit || 0))}</strong><br/>
+                                    <span style="font-size: 11px; color: #64748b;">Invoices: ${formatCurrency(selectedRow.totalInvoiced)}</span>
+                                    ${(selectedRow.beginningBalance || 0) > 0 ? `<br/><span style="font-size: 11px; color: #64748b;">Beg. Balance: ${formatCurrency(selectedRow.beginningBalance)}</span>` : ''}
+                                    ${(selectedRow.securityDeposit || 0) > 0 ? `<br/><span style="font-size: 11px; color: #64748b;">Sec. Deposit: ${formatCurrency(selectedRow.securityDeposit)}</span>` : ''}
+                                </td>
+                                <td>
+                                    <strong style="color: #10b981;">${formatCurrency(selectedRow.totalPaid)}</strong><br/>
+                                    <span style="font-size: 11px; color: #64748b;">Invoices: ${formatCurrency(printInvoicePaid)}</span>
+                                    ${(selectedRow.beginningBalancePaid || 0) > 0 ? `<br/><span style="font-size: 11px; color: #64748b;">Beg. Balance: ${formatCurrency(selectedRow.beginningBalancePaid)}</span>` : ''}
+                                    ${(selectedRow.depositPaid || 0) > 0 ? `<br/><span style="font-size: 11px; color: #64748b;">Sec. Deposit: ${formatCurrency(selectedRow.depositPaid)}</span>` : ''}
+                                </td>
+                                <td style="font-weight: bold; color: ${selectedRow.outstandingBalance > 0 ? '#ef4444' : '#10b981'};">${formatCurrency(selectedRow.outstandingBalance)}</td>
                             </tr>
                         </tbody>
+                        <tfoot>
+                            <tr style="background: #f8f9fa; font-weight: bold; border-top: 2px solid #64748b;">
+                                <td colspan="3" style="text-align: right;">Total:</td>
+                                <td>${formatCurrency(summary.totalInvoiced)}</td>
+                                <td>${formatCurrency(summary.totalPaid)}</td>
+                                <td style="color: ${summary.outstandingBalance > 0 ? '#ef4444' : '#10b981'};">${formatCurrency(summary.outstandingBalance)}</td>
+                            </tr>
+                        </tfoot>
                     </table>
                 </body>
             </html>
@@ -508,88 +506,46 @@ const TenantBalanceReport = () => {
                                                 <span className="text-muted small">Monthly Rent</span>
                                                 <span className="fw-semibold">{formatCurrency(selectedRow.lease?.rentAmount)}</span>
                                             </div>
-                                            <div className="d-flex justify-content-between pt-2 border-top">
-                                                <span className="text-muted small">Collection Rate</span>
-                                                <span className="fw-bold text-success">{summary.collectionRate.toFixed(1)}%</span>
-                                            </div>
-                                        </div>
-                                    </Col>
-                                </Row>
-                            </CardBody>
-                        </Card>
+                                             <div className="d-flex justify-content-between pt-2 border-top">
+                                                 <span className="text-muted small">Monthly Rent</span>
+                                                 <span className="fw-semibold">{formatCurrency(selectedRow.lease?.rentAmount)}</span>
+                                             </div>
+                                         </div>
+                                     </Col>
+                                 </Row>
+                             </CardBody>
+                         </Card>
 
+                        {/* Summary Table */}
                         <Row className="mb-4">
-                            <Col lg={3} md={6} className="mb-3">
-                                <StatCard
-                                    icon={FiDollarSign}
-                                    title="Total Invoiced"
-                                    value={formatCurrency(summary.totalInvoiced)}
-                                    color="primary"
-                                    subtitle="Within selected filter"
-                                />
-                            </Col>
-                            <Col lg={3} md={6} className="mb-3">
-                                <StatCard
-                                    icon={FiCheckCircle}
-                                    title="Reconciled Paid"
-                                    value={formatCurrency(summary.totalPaid)}
-                                    color="success"
-                                    subtitle="Only reconciled payments"
-                                />
-                            </Col>
-                            <Col lg={3} md={6} className="mb-3">
-                                <StatCard
-                                    icon={FiAlertCircle}
-                                    title="Outstanding Balance"
-                                    value={formatCurrency(summary.outstandingBalance)}
-                                    color="danger"
-                                    subtitle="Remaining amount"
-                                />
-                            </Col>
-                            <Col lg={3} md={6} className="mb-3">
-                                <StatCard
-                                    icon={FiBarChart2}
-                                    title="Collection Rate"
-                                    value={`${summary.collectionRate.toFixed(1)}%`}
-                                    color="info"
-                                    subtitle="Paid vs invoiced"
-                                />
-                            </Col>
-                        </Row>
-
-                        <Row className="mb-4">
-                            <Col lg={7} className="mb-4">
+                            <Col md={6} className="mb-3">
                                 <Card className="border-0 shadow-sm h-100">
-                                    <CardHeader className="bg-white border-0 pt-4">
-                                        <div className="d-flex align-items-center">
-                                            <FiBarChart2 size={18} className="text-primary me-2" />
-                                            <h6 className="mb-0">Balance Comparison</h6>
-                                        </div>
-                                    </CardHeader>
-                                    <CardBody>
-                                        <div style={{ height: "320px" }}>
-                                            <Bar data={comparisonChartData} options={chartOptions} />
-                                        </div>
-                                    </CardBody>
-                                </Card>
-                            </Col>
-                            <Col lg={5} className="mb-4">
-                                <Card className="border-0 shadow-sm h-100">
-                                    <CardHeader className="bg-white border-0 pt-4">
-                                        <div className="d-flex align-items-center">
-                                            <FiPieChart size={18} className="text-primary me-2" />
-                                            <h6 className="mb-0">Paid vs Outstanding</h6>
-                                        </div>
-                                    </CardHeader>
-                                    <CardBody>
-                                        <div style={{ height: "320px" }}>
-                                            <Doughnut data={collectionChartData} options={doughnutOptions} />
+                                    <CardBody className="p-4">
+                                        <h5 className="mb-3">Report Summary</h5>
+                                        <div className="table-responsive">
+                                            <table className="table table-bordered mb-0" style={{ borderColor: "#cbd5e1" }}>
+                                                <tbody>
+                                                    <tr>
+                                                        <td className="text-muted" style={{ padding: "8px", border: "1px solid #cbd5e1" }}>Total Invoiced</td>
+                                                        <td className="fw-bold text-primary" style={{ padding: "8px", border: "1px solid #cbd5e1", textAlign: "right" }}>{formatCurrency(summary.totalInvoiced)}</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td className="text-muted" style={{ padding: "8px", border: "1px solid #cbd5e1" }}>Reconciled Paid</td>
+                                                        <td className="fw-bold text-success" style={{ padding: "8px", border: "1px solid #cbd5e1", textAlign: "right" }}>{formatCurrency(summary.totalPaid)}</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td className="text-muted" style={{ padding: "8px", border: "1px solid #cbd5e1" }}>Outstanding Balance</td>
+                                                        <td className="fw-bold text-danger" style={{ padding: "8px", border: "1px solid #cbd5e1", textAlign: "right" }}>{formatCurrency(summary.outstandingBalance)}</td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
                                         </div>
                                     </CardBody>
                                 </Card>
                             </Col>
                         </Row>
 
+                        {/* Transaction Details Table */}
                         <Card className="border-0 shadow-sm">
                             <CardHeader className="bg-white border-0 pt-4 px-4">
                                 <div className="d-flex justify-content-between align-items-center flex-wrap gap-3">
@@ -600,28 +556,87 @@ const TenantBalanceReport = () => {
                                 </div>
                             </CardHeader>
                             <CardBody className="p-0">
-                                <DataTable
-                                    columns={columns}
-                                    data={[selectedRow]}
-                                    responsive
-                                    highlightOnHover
-                                    className="border-0"
-                                    noDataComponent={<NoDataFound />}
-                                    customStyles={{
-                                        headRow: {
-                                            style: {
-                                                backgroundColor: "#f8f9fa",
-                                                borderTop: "none",
-                                                fontWeight: 600,
-                                            },
-                                        },
-                                        rows: {
-                                            style: {
-                                                minHeight: "72px",
-                                            },
-                                        },
-                                    }}
-                                />
+                                <div className="table-responsive px-4 pb-4">
+                                    <table className="table table-bordered align-middle mb-0" style={{ borderColor: "#cbd5e1" }}>
+                                        <thead className="table-light">
+                                            <tr style={{ backgroundColor: "#f8f9fa", borderBottom: "2px solid #cbd5e1" }}>
+                                                <th style={{ padding: "12px", color: "#1e293b", fontWeight: 600, border: "1px solid #cbd5e1", width: "70px", textAlign: "center" }}>SQN</th>
+                                                <th style={{ padding: "12px", color: "#1e293b", fontWeight: 600, border: "1px solid #cbd5e1" }}>Lease</th>
+                                                <th style={{ padding: "12px", color: "#1e293b", fontWeight: 600, border: "1px solid #cbd5e1" }}>Contact</th>
+                                                <th style={{ padding: "12px", color: "#1e293b", fontWeight: 600, border: "1px solid #cbd5e1" }}>Invoiced / Owed</th>
+                                                <th style={{ padding: "12px", color: "#1e293b", fontWeight: 600, border: "1px solid #cbd5e1" }}>Reconciled Paid</th>
+                                                <th style={{ padding: "12px", color: "#1e293b", fontWeight: 600, border: "1px solid #cbd5e1" }}>Balance</th>
+                                                <th style={{ padding: "12px", color: "#1e293b", fontWeight: 600, border: "1px solid #cbd5e1" }}>Collection Rate</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {selectedRow ? (
+                                                <tr style={{ borderBottom: "1px solid #cbd5e1" }}>
+                                                    <td style={{ padding: "12px", border: "1px solid #cbd5e1", textAlign: "center" }}>1</td>
+                                                    <td style={{ padding: "12px", border: "1px solid #cbd5e1" }}>
+                                                        <div className="fw-semibold">{selectedRow.lease?.leaseNumber || "-"}</div>
+                                                        <small className="text-muted">Rent: {formatCurrency(selectedRow.lease?.rentAmount)}</small>
+                                                    </td>
+                                                    <td style={{ padding: "12px", border: "1px solid #cbd5e1" }}>
+                                                        <div className="small">{selectedRow.tenant?.phone || "-"}</div>
+                                                        <div className="small text-muted">{selectedRow.tenant?.email || "-"}</div>
+                                                    </td>
+                                                    <td style={{ padding: "12px", border: "1px solid #cbd5e1" }}>
+                                                        <div className="fw-semibold">{formatCurrency((selectedRow.totalInvoiced || 0) + (selectedRow.beginningBalance || 0) + (selectedRow.securityDeposit || 0))}</div>
+                                                        <small className="text-muted d-block">Invoices: {formatCurrency(selectedRow.totalInvoiced)}</small>
+                                                        {(selectedRow.beginningBalance || 0) > 0 && (
+                                                            <small className="text-muted d-block">Beg. Balance: {formatCurrency(selectedRow.beginningBalance)}</small>
+                                                        )}
+                                                        {(selectedRow.securityDeposit || 0) > 0 && (
+                                                            <small className="text-muted d-block">Sec. Deposit: {formatCurrency(selectedRow.securityDeposit)}</small>
+                                                        )}
+                                                    </td>
+                                                    <td style={{ padding: "12px", border: "1px solid #cbd5e1" }}>
+                                                        <div className="fw-semibold text-success">{formatCurrency(selectedRow.totalPaid)}</div>
+                                                        <small className="text-muted d-block">Invoices: {formatCurrency((selectedRow.totalPaid || 0) - (selectedRow.depositPaid || 0) - (selectedRow.beginningBalancePaid || 0))}</small>
+                                                        {(selectedRow.beginningBalancePaid || 0) > 0 && (
+                                                            <small className="text-muted d-block">Beg. Balance: {formatCurrency(selectedRow.beginningBalancePaid)}</small>
+                                                        )}
+                                                        {(selectedRow.depositPaid || 0) > 0 && (
+                                                            <small className="text-muted d-block">Sec. Deposit: {formatCurrency(selectedRow.depositPaid)}</small>
+                                                        )}
+                                                    </td>
+                                                    <td style={{ padding: "12px", border: "1px solid #cbd5e1" }}>
+                                                        <div className={`fw-bold ${selectedRow.outstandingBalance > 0 ? "text-danger" : "text-success"}`}>
+                                                            {formatCurrency(selectedRow.outstandingBalance)}
+                                                        </div>
+                                                    </td>
+                                                    <td style={{ padding: "12px", border: "1px solid #cbd5e1" }}>
+                                                        <div style={{ minWidth: "120px" }}>
+                                                            <Progress
+                                                                value={summary.collectionRate}
+                                                                color={summary.collectionRate === 100 ? "success" : summary.collectionRate > 0 ? "warning" : "danger"}
+                                                                style={{ height: "6px" }}
+                                                                className="mb-1"
+                                                            />
+                                                            <small className="text-muted">{summary.collectionRate.toFixed(1)}%</small>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            ) : (
+                                                <tr>
+                                                    <td colSpan="7" className="text-center p-4 text-muted" style={{ border: "1px solid #cbd5e1" }}>
+                                                        No record found
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </tbody>
+                                        <tfoot style={{ borderTop: "2px solid #64748b" }}>
+                                            <tr style={{ backgroundColor: "#f8f9fa" }}>
+                                                <td colSpan="3" className="text-end fw-bold" style={{ padding: "12px", border: "1px solid #cbd5e1" }}>Total:</td>
+                                                <td className="fw-bold" style={{ padding: "12px", border: "1px solid #cbd5e1" }}>{formatCurrency(summary.totalInvoiced)}</td>
+                                                <td className="fw-bold text-success" style={{ padding: "12px", border: "1px solid #cbd5e1" }}>{formatCurrency(summary.totalPaid)}</td>
+                                                <td className={`fw-bold ${summary.outstandingBalance > 0 ? "text-danger" : "text-success"}`} style={{ padding: "12px", border: "1px solid #cbd5e1" }}>{formatCurrency(summary.outstandingBalance)}</td>
+                                                <td className="fw-bold text-success" style={{ padding: "12px", border: "1px solid #cbd5e1" }}>{summary.collectionRate.toFixed(1)}%</td>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+                                </div>
                             </CardBody>
                         </Card>
                     </>

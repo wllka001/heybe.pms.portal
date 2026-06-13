@@ -38,7 +38,7 @@ import {
 } from "../../slices/thunks";
 
 const UtilityUsages = () => {
-  document.title = "Utility Types | Apartment Management";
+  document.title = "Utility Types | Degaanly";
   const dispatch = useDispatch();
 
   const usageSelector = createSelector(

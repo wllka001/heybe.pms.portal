@@ -82,10 +82,10 @@ const formatCurrency = (amount) => `$${Number(amount || 0).toLocaleString()}`;
 const formatDate = (date) =>
   date
     ? new Date(date).toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-      })
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    })
     : "-";
 
 const generateExpenseNumber = () =>
@@ -152,7 +152,7 @@ const ApprovalBadge = ({ status }) => {
 };
 
 const Expenses = () => {
-  document.title = "Finance - Expenses | Apartment Management";
+  document.title = "Finance - Expenses | Degaanly";
   const dispatch = useDispatch();
 
   const financeSelector = createSelector(

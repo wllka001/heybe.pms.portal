@@ -67,7 +67,7 @@ const roleOptions = [
 ];
 
 const Employees = () => {
-  document.title = "Employees | Apartment Management";
+  document.title = "Employees | Degaanly";
   const dispatch = useDispatch();
 
   const employeeSelector = createSelector(

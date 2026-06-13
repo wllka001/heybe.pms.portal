@@ -21,7 +21,7 @@ const ProfileStat = ({ icon: Icon, label, value, color }) => (
 );
 
 const Profile = () => {
-  document.title = "My Profile | Apartment Management";
+  document.title = "My Profile | Degaanly";
   const authUser = useAuthUser();
 
   return (
@@ -71,8 +71,8 @@ const Profile = () => {
                 <div className="bg-white bg-opacity-10 rounded-4 p-4 text-white border border-white border-opacity-10">
                   <div className="small text-white-50 mb-1">Email Address</div>
                   <div className="fw-semibold mb-3">{authUser?.email || "-"}</div>
-              <div className="small text-white-50 mb-1">Organization</div>
-              <div className="fw-semibold">{authUser?.organizationId || "-"}</div>
+                  <div className="small text-white-50 mb-1">Organization</div>
+                  <div className="fw-semibold">{authUser?.organizationId || "-"}</div>
                 </div>
               </Col>
             </Row>

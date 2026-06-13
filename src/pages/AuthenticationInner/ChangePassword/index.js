@@ -37,7 +37,7 @@ const PasswordField = ({ id, label, placeholder, value, onChange, onBlur, invali
 );
 
 const ChangePassword = () => {
-  document.title = "Change Password | Apartment Management";
+  document.title = "Change Password | Degaanly";
 
   const dispatch = useDispatch();
   const navigate = useNavigate();

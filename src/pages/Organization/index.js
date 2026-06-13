@@ -438,6 +438,7 @@ const Organization = () => {
       .max(31, "Rent due day must not exceed 31")
       .integer("Rent due day must be a whole number")
       .required("Rent due day is required"),
+    'settings.depositReceiptToggle': Yup.boolean(),
 
     isActive: Yup.boolean()
   });
@@ -468,6 +469,7 @@ const Organization = () => {
       'settings.vatRate': organization?.settings?.vatRate || 0,
       'settings.invoiceDueDays': organization?.settings?.invoiceDueDays || 5,
       'settings.rentDueDay': organization?.settings?.rentDueDay || 1,
+      'settings.depositReceiptToggle': organization?.settings?.depositReceiptToggle ?? true,
 
       isActive: organization?.isActive ?? true
     },
@@ -504,7 +506,8 @@ const Organization = () => {
           settings: {
             vatRate: parseFloat(values['settings.vatRate']),
             invoiceDueDays: parseInt(values['settings.invoiceDueDays']),
-            rentDueDay: parseInt(values['settings.rentDueDay'])
+            rentDueDay: parseInt(values['settings.rentDueDay']),
+            depositReceiptToggle: Boolean(values['settings.depositReceiptToggle'])
           },
           isActive: values.isActive
         };
@@ -919,6 +922,13 @@ const Organization = () => {
                             Day {organization.settings?.rentDueDay || 1}
                           </p>
                         </Col>
+                        <Col md={6}>
+                          <div style={styles.infoLabel}>Deposit Receipts</div>
+                          <p style={styles.infoValue}>
+                            <i className="ri-receipt-line me-2" style={{ color: colors.primary }}></i>
+                            {organization.settings?.depositReceiptToggle !== false ? 'Enabled' : 'Disabled'}
+                          </p>
+                        </Col>
                       </Row>
                     </div>
                   </TabPane>
@@ -1322,6 +1332,21 @@ const Organization = () => {
                           <FormFeedback>{validation.errors['settings.rentDueDay']}</FormFeedback>
                         </FormGroup>
                       </Col>
+                      {/* <Col md={4}>
+                        <FormGroup check style={{ marginTop: '38px' }}>
+                          <Input
+                            type="checkbox"
+                            name="settings.depositReceiptToggle"
+                            checked={validation.values['settings.depositReceiptToggle']}
+                            onChange={validation.handleChange}
+                            id="depositReceiptToggle"
+                            style={{ cursor: 'pointer' }}
+                          />
+                          <Label for="depositReceiptToggle" check style={{ color: colors.dark, fontWeight: 500, cursor: 'pointer' }}>
+                            Enable Deposit Receipts
+                          </Label>
+                        </FormGroup>
+                      </Col> */}
                     </Row>
                   </div>
                 </Col>

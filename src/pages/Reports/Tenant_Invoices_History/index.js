@@ -45,33 +45,8 @@ import {
     FiArrowDown,
     FiTarget,
 } from "react-icons/fi";
-import {
-    Chart as ChartJS,
-    CategoryScale,
-    LinearScale,
-    BarElement,
-    Title,
-    Tooltip,
-    Legend,
-    ArcElement,
-    PointElement,
-    LineElement,
-} from "chart.js";
-import { Bar, Line, Doughnut } from "react-chartjs-2";
 import BreadCrumb from "../../../Components/Common/BreadCrumb";
 import { ReportsAPI, TenantsAPI } from "../../../helpers/backend_helper";
-
-ChartJS.register(
-    CategoryScale,
-    LinearScale,
-    BarElement,
-    Title,
-    Tooltip,
-    Legend,
-    ArcElement,
-    PointElement,
-    LineElement
-);
 
 const selectStyles = {
     control: (base) => ({
@@ -233,7 +208,7 @@ const TenantSummaryCard = ({ tenant, invoices, payments }) => {
 };
 
 const TenantHistoryReport = () => {
-    document.title = "Tenant Invoice & Payments History | Apartment Management";
+    document.title = "Tenant Invoice & Payments History | Degaanly";
 
     const [reportData, setReportData] = useState(null);
     const [loading, setLoading] = useState(false);
@@ -292,7 +267,6 @@ const TenantHistoryReport = () => {
         }
     }, [fetchReport]);
 
-    // Process data for charts
     const chartData = useMemo(() => {
         if (!reportData?.details) return null;
 
@@ -301,154 +275,31 @@ const TenantHistoryReport = () => {
             (payment) => payment.status?.toLowerCase() === "reconciled",
         );
 
-        // Monthly trends
-        const monthlyData = {};
-        const statusCounts = {
-            paid: 0,
-            overdue: 0,
-            pending: 0,
-            reconciled: 0,
-            rejected: 0,
-            reversed: 0,
-        };
-        const statusAmounts = {
-            paid: 0,
-            overdue: 0,
-            pending: 0,
-            reconciled: 0,
-            rejected: 0,
-            reversed: 0,
-        };
+        const beginningBalance = Number(reportData.summary?.beginningBalance || 0);
+        const beginningBalancePaid = Number(reportData.summary?.beginningBalancePaid || 0);
+        const securityDeposit = Number(reportData.summary?.securityDeposit || 0);
+        const depositPaid = Number(reportData.summary?.depositPaid || 0);
 
-        invoices.forEach(inv => {
-            const date = new Date(inv.date);
-            const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
-            if (!monthlyData[monthKey]) {
-                monthlyData[monthKey] = { invoices: 0, payments: 0 };
-            }
-            monthlyData[monthKey].invoices += inv.amount;
-
-            const status = inv.status?.toLowerCase() || "pending";
-            statusCounts[status] = (statusCounts[status] || 0) + 1;
-            statusAmounts[status] = (statusAmounts[status] || 0) + inv.amount;
-        });
-
-        payments.forEach(pay => {
-            const date = new Date(pay.date);
-            const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
-            if (!monthlyData[monthKey]) {
-                monthlyData[monthKey] = { invoices: 0, payments: 0 };
-            }
-            monthlyData[monthKey].payments += pay.amount;
-
-            const status = pay.status?.toLowerCase() || "recorded";
-            statusCounts[status] = (statusCounts[status] || 0) + 1;
-            statusAmounts[status] = (statusAmounts[status] || 0) + pay.amount;
-        });
-
-        const sortedMonths = Object.keys(monthlyData).sort();
-        const monthlyTrend = sortedMonths.map(month => ({
-            month,
-            invoices: monthlyData[month].invoices,
-            payments: monthlyData[month].payments,
-        }));
+        const invoiceAmount = invoices.reduce((sum, inv) => sum + inv.amount, 0);
+        const invoicePaid = payments.reduce((sum, pay) => sum + pay.amount, 0) - beginningBalancePaid - depositPaid;
+        const totalOwed = invoiceAmount + beginningBalance + securityDeposit;
+        const totalPaid = payments.reduce((sum, pay) => sum + pay.amount, 0);
+        const outstandingBalance = totalOwed - totalPaid;
 
         return {
-            monthlyTrend,
-            statusCounts,
-            statusAmounts,
             totalInvoices: invoices.length,
             totalPayments: payments.length,
-            totalInvoiceAmount: invoices.reduce((sum, inv) => sum + inv.amount, 0),
-            totalPaymentAmount: payments.reduce((sum, pay) => sum + pay.amount, 0),
+            totalInvoiceAmount: invoiceAmount,
+            totalPaymentAmount: totalPaid,
+            beginningBalance,
+            beginningBalancePaid,
+            securityDeposit,
+            depositPaid,
+            invoicePaid,
+            totalOwed,
+            outstandingBalance,
         };
     }, [reportData]);
-
-    // Monthly Trend Chart
-    const monthlyLineData = {
-        labels: chartData?.monthlyTrend.map(m => m.month) || [],
-        datasets: [
-            {
-                label: "Invoices ($)",
-                data: chartData?.monthlyTrend.map(m => m.invoices) || [],
-                borderColor: "#ef4444",
-                backgroundColor: "rgba(239, 68, 68, 0.1)",
-                fill: true,
-                tension: 0.4,
-            },
-            {
-                label: "Payments ($)",
-                data: chartData?.monthlyTrend.map(m => m.payments) || [],
-                borderColor: "#10b981",
-                backgroundColor: "rgba(16, 185, 129, 0.1)",
-                fill: true,
-                tension: 0.4,
-            },
-        ],
-    };
-
-    // Status Distribution Doughnut
-    const statusDoughnutData = {
-        labels: Object.keys(chartData?.statusAmounts || {}).map(
-            key => key.charAt(0).toUpperCase() + key.slice(1)
-        ),
-        datasets: [
-            {
-                data: Object.values(chartData?.statusAmounts || {}),
-                backgroundColor: ["#10b981", "#ef4444", "#f59e0b", "#3b82f6", "#8b5cf6", "#ec489a"],
-                borderWidth: 0,
-            },
-        ],
-    };
-
-    const chartOptions = {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-            legend: {
-                position: "top",
-                labels: {
-                    usePointStyle: true,
-                    boxWidth: 10,
-                },
-            },
-            tooltip: {
-                callbacks: {
-                    label: (context) => {
-                        return `${context.dataset.label}: ${formatCurrency(context.parsed.y)}`;
-                    },
-                },
-            },
-        },
-        scales: {
-            y: {
-                ticks: {
-                    callback: (value) => formatCurrency(value),
-                },
-            },
-        },
-    };
-
-    const doughnutOptions = {
-        responsive: true,
-        maintainAspectRatio: false,
-        cutout: "60%",
-        plugins: {
-            legend: {
-                position: "bottom",
-            },
-            tooltip: {
-                callbacks: {
-                    label: (context) => {
-                        const value = context.raw;
-                        const total = Object.values(chartData?.statusAmounts || {}).reduce((a, b) => a + b, 0);
-                        const percentage = ((value / total) * 100).toFixed(1);
-                        return `${context.label}: ${formatCurrency(value)} (${percentage}%)`;
-                    },
-                },
-            },
-        },
-    };
 
     // Combine and filter data
     const allTransactions = useMemo(() => {
@@ -540,7 +391,8 @@ const TenantHistoryReport = () => {
     ];
 
     const exportRows = useMemo(() => {
-        return filteredTransactions.map(row => ({
+        return filteredTransactions.map((row, idx) => ({
+            "SQN": idx + 1,
             "Type": row.type === "invoice" ? "Invoice" : "Payment",
             "Reference": row.reference,
             "Date": formatDate(row.date),
@@ -558,55 +410,87 @@ const TenantHistoryReport = () => {
         const printWindow = window.open("", "_blank", "width=1200,height=800");
         if (!printWindow) return;
 
-        const summary = reportData?.summary || {};
-
         const summaryHtml = `
-      <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 30px;">
-        <div style="background: #f8f9fa; padding: 20px; border-radius: 12px; text-align: center;">
-          <div style="color: #6c757d; font-size: 12px;">This Month Invoices</div>
-          <div style="font-size: 24px; font-weight: bold; color: #3b82f6;">${formatCurrency(summary.thisMonthInvoiceAmount)}</div>
-        </div>
-        <div style="background: #f8f9fa; padding: 20px; border-radius: 12px; text-align: center;">
-          <div style="color: #6c757d; font-size: 12px;">This Month Payments</div>
-          <div style="font-size: 24px; font-weight: bold; color: #10b981;">${formatCurrency(summary.thisMonthPaidAmount)}</div>
-        </div>
-        <div style="background: #f8f9fa; padding: 20px; border-radius: 12px; text-align: center;">
-          <div style="color: #6c757d; font-size: 12px;">This Month Balance</div>
-          <div style="font-size: 24px; font-weight: bold; color: #ef4444;">${formatCurrency(summary.thisMonthBalance)}</div>
-        </div>
-        <div style="background: #f8f9fa; padding: 20px; border-radius: 12px; text-align: center;">
-          <div style="color: #6c757d; font-size: 12px;">Total Transactions</div>
-          <div style="font-size: 24px; font-weight: bold; color: #8b5cf6;">${(summary.totalHistoricalInvoices || 0) + (summary.totalHistoricalPayments || 0)}</div>
-        </div>
+      <div style="max-width: 600px; margin-bottom: 30px;">
+        <h3 style="font-size: 16px; margin-bottom: 12px; color: #0f172a; border-bottom: 2px solid #cbd5e1; padding-bottom: 6px;">Report Summary</h3>
+        <table style="width: 100%; border-collapse: collapse; border: 1px solid #cbd5e1; font-size: 14px;">
+          <thead>
+            <tr style="background: #f8f9fa;">
+              <th style="padding: 8px; border: 1px solid #cbd5e1; text-align: left; color: #0f172a;">Category</th>
+              <th style="padding: 8px; border: 1px solid #cbd5e1; text-align: right; color: #0f172a;">Invoiced / Owed</th>
+              <th style="padding: 8px; border: 1px solid #cbd5e1; text-align: right; color: #0f172a;">Reconciled Paid</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="padding: 8px; border: 1px solid #cbd5e1; color: #64748b;">Monthly Invoices</td>
+              <td style="padding: 8px; border: 1px solid #cbd5e1; text-align: right; font-weight: 600; color: #3b82f6;">${formatCurrency(chartData?.totalInvoiceAmount || 0)}</td>
+              <td style="padding: 8px; border: 1px solid #cbd5e1; text-align: right; font-weight: 600; color: #10b981;">${formatCurrency(chartData?.invoicePaid || 0)}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px; border: 1px solid #cbd5e1; color: #64748b;">Beginning Balance</td>
+              <td style="padding: 8px; border: 1px solid #cbd5e1; text-align: right; font-weight: 600; color: #3b82f6;">${formatCurrency(chartData?.beginningBalance || 0)}</td>
+              <td style="padding: 8px; border: 1px solid #cbd5e1; text-align: right; font-weight: 600; color: #10b981;">${formatCurrency(chartData?.beginningBalancePaid || 0)}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px; border: 1px solid #cbd5e1; color: #64748b;">Security Deposit</td>
+              <td style="padding: 8px; border: 1px solid #cbd5e1; text-align: right; font-weight: 600; color: #3b82f6;">${formatCurrency(chartData?.securityDeposit || 0)}</td>
+              <td style="padding: 8px; border: 1px solid #cbd5e1; text-align: right; font-weight: 600; color: #10b981;">${formatCurrency(chartData?.depositPaid || 0)}</td>
+            </tr>
+            <tr style="background: #f8f9fa; font-weight: bold;">
+              <td style="padding: 8px; border: 1px solid #cbd5e1; color: #0f172a;">Total</td>
+              <td style="padding: 8px; border: 1px solid #cbd5e1; text-align: right; color: #3b82f6;">${formatCurrency(chartData?.totalOwed || 0)}</td>
+              <td style="padding: 8px; border: 1px solid #cbd5e1; text-align: right; color: #10b981;">${formatCurrency(chartData?.totalPaymentAmount || 0)}</td>
+            </tr>
+            <tr style="font-weight: bold;">
+              <td colspan="2" style="padding: 8px; border: 1px solid #cbd5e1; color: #0f172a;">Outstanding Balance</td>
+              <td style="padding: 8px; border: 1px solid #cbd5e1; text-align: right; color: ${chartData?.outstandingBalance > 0 ? '#ef4444' : '#10b981'};">${formatCurrency(chartData?.outstandingBalance || 0)}</td>
+            </tr>
+            <tr>
+              <td colspan="2" style="padding: 8px; border: 1px solid #cbd5e1; color: #64748b;">Total Transactions</td>
+              <td style="padding: 8px; border: 1px solid #cbd5e1; text-align: right; font-weight: 600; color: #1e293b;">${(chartData?.totalInvoices || 0) + (chartData?.totalPayments || 0)}</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     `;
 
         const tableHtml = `
-      <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
+      <table style="width: 100%; border-collapse: collapse; margin-top: 20px; border: 1px solid #cbd5e1;">
         <thead>
-          <tr style="background: #f8f9fa; border-bottom: 2px solid #e2e8f0;">
-            <th style="padding: 12px; text-align: left;">Type</th>
-            <th style="padding: 12px; text-align: left;">Reference</th>
-            <th style="padding: 12px; text-align: right;">Amount</th>
-            <th style="padding: 12px; text-align: center;">Status</th>
+          <tr style="background: #f8f9fa; border-bottom: 2px solid #cbd5e1;">
+            <th style="padding: 12px; text-align: center; border: 1px solid #cbd5e1; width: 60px;">SQN</th>
+            <th style="padding: 12px; text-align: left; border: 1px solid #cbd5e1;">Type</th>
+            <th style="padding: 12px; text-align: left; border: 1px solid #cbd5e1;">Reference</th>
+            <th style="padding: 12px; text-align: right; border: 1px solid #cbd5e1;">Amount</th>
+            <th style="padding: 12px; text-align: right; border: 1px solid #cbd5e1;">Paid</th>
+            <th style="padding: 12px; text-align: right; border: 1px solid #cbd5e1;">Balance</th>
+            <th style="padding: 12px; text-align: center; border: 1px solid #cbd5e1;">Status</th>
            </tr>
         </thead>
         <tbody>
-          ${filteredTransactions.map(row => `
-            <tr style="border-bottom: 1px solid #e2e8f0;">
-              <td style="padding: 12px;">
+          ${filteredTransactions.map((row, idx) => `
+            <tr style="border-bottom: 1px solid #cbd5e1;">
+              <td style="padding: 12px; text-align: center; border: 1px solid #cbd5e1;">${idx + 1}</td>
+              <td style="padding: 12px; border: 1px solid #cbd5e1;">
                 <span style="background: ${row.type === 'invoice' ? '#e0f2fe' : '#d4edda'}; padding: 4px 8px; border-radius: 4px;">
                   ${row.type === "invoice" ? "Invoice" : "Payment"}
                 </span>
               </td>
-              <td style="padding: 12px;">
+              <td style="padding: 12px; border: 1px solid #cbd5e1;">
                 ${row.reference}<br/>
                 <small>${formatDate(row.date)}</small>
               </td>
-              <td style="padding: 12px; text-align: right; font-weight: bold;">
-                ${formatCurrency(row.amount)}
+              <td style="padding: 12px; text-align: right; font-weight: bold; border: 1px solid #cbd5e1;">
+                ${row.type === "payment" ? "+" : ""}${formatCurrency(row.amount)}
               </td>
-              <td style="padding: 12px; text-align: center;">
+              <td style="padding: 12px; text-align: right; border: 1px solid #cbd5e1;">
+                ${row.type === "invoice" ? formatCurrency(row.paidAmount) : "-"}
+              </td>
+              <td style="padding: 12px; text-align: right; border: 1px solid #cbd5e1; color: ${row.balance > 0 ? '#ef4444' : '#1e293b'};">
+                ${row.type === "invoice" ? formatCurrency(row.balance) : "-"}
+              </td>
+              <td style="padding: 12px; text-align: center; border: 1px solid #cbd5e1;">
                 <span style="background: ${getStatusColor(row.status) === 'success' ? '#d4edda' : '#fff3cd'}; padding: 4px 8px; border-radius: 4px;">
                   ${row.status?.toUpperCase() || "PENDING"}
                 </span>
@@ -614,6 +498,27 @@ const TenantHistoryReport = () => {
             </tr>
           `).join("")}
         </tbody>
+        <tfoot>
+          <tr style="background: #f8f9fa; font-weight: bold; border-top: 2px solid #64748b;">
+            <td colspan="3" style="padding: 12px; text-align: right; border: 1px solid #cbd5e1; color: #0f172a;">Total Owed / Reconciled Paid / Balance:</td>
+            <td style="padding: 12px; text-align: right; border: 1px solid #cbd5e1; color: #0f172a;">
+              <div>${formatCurrency(chartData?.totalOwed || 0)}</div>
+              <small style="font-weight: normal; color: #64748b; display: block;">Invoices: ${formatCurrency(chartData?.totalInvoiceAmount || 0)}</small>
+              ${(chartData?.beginningBalance || 0) > 0 ? `<small style="font-weight: normal; color: #64748b; display: block;">Beg. Balance: ${formatCurrency(chartData?.beginningBalance)}</small>` : ''}
+              ${(chartData?.securityDeposit || 0) > 0 ? `<small style="font-weight: normal; color: #64748b; display: block;">Sec. Deposit: ${formatCurrency(chartData?.securityDeposit)}</small>` : ''}
+            </td>
+            <td style="padding: 12px; text-align: right; border: 1px solid #cbd5e1; color: #0f172a;">
+              <div style="color: #10b981;">Paid: ${formatCurrency(chartData?.totalPaymentAmount || 0)}</div>
+              <small style="font-weight: normal; color: #64748b; display: block;">Invoices: ${formatCurrency(chartData?.invoicePaid || 0)}</small>
+              ${(chartData?.beginningBalancePaid || 0) > 0 ? `<small style="font-weight: normal; color: #64748b; display: block;">Beg. Balance: ${formatCurrency(chartData?.beginningBalancePaid)}</small>` : ''}
+              ${(chartData?.depositPaid || 0) > 0 ? `<small style="font-weight: normal; color: #64748b; display: block;">Sec. Deposit: ${formatCurrency(chartData?.depositPaid)}</small>` : ''}
+            </td>
+            <td style="padding: 12px; text-align: right; border: 1px solid #cbd5e1; color: ${chartData?.outstandingBalance > 0 ? '#ef4444' : '#10b981'};">
+              <div>Balance: ${formatCurrency(chartData?.outstandingBalance || 0)}</div>
+            </td>
+            <td style="border: 1px solid #cbd5e1;"></td>
+          </tr>
+        </tfoot>
       </table>
     `;
 
@@ -662,7 +567,7 @@ const TenantHistoryReport = () => {
           ${summaryHtml}
           ${tableHtml}
           <div style="margin-top: 30px; text-align: center; color: #64748b; font-size: 12px;">
-            Generated by Apartment Management System
+            Generated by Degaanly System
           </div>
         </body>
       </html>
@@ -771,74 +676,56 @@ const TenantHistoryReport = () => {
                     </Card>
                 ) : reportData ? (
                     <>
-                        {/* Summary Stats Cards */}
+                        {/* Summary Table */}
                         <Row className="mb-4">
-                            <Col lg={3} md={6} className="mb-3">
-                                <StatCard
-                                    icon={FiFileText}
-                                    title="Invoice Amount"
-                                    value={formatCurrency(chartData?.totalInvoiceAmount || 0)}
-                                    color="primary"
-                                    subtitle="Selected tenant total"
-                                />
-                            </Col>
-                            <Col lg={3} md={6} className="mb-3">
-                                <StatCard
-                                    icon={FiCheckCircle}
-                                    title="Reconciled Payments"
-                                    value={formatCurrency(chartData?.totalPaymentAmount || 0)}
-                                    color="success"
-                                    subtitle="Ignored non-reconciled"
-                                />
-                            </Col>
-                            <Col lg={3} md={6} className="mb-3">
-                                <StatCard
-                                    icon={FiAlertCircle}
-                                    title="Outstanding Balance"
-                                    value={formatCurrency((chartData?.totalInvoiceAmount || 0) - (chartData?.totalPaymentAmount || 0))}
-                                    color="danger"
-                                    subtitle="Invoices minus reconciled payments"
-                                />
-                            </Col>
-                            <Col lg={3} md={6} className="mb-3">
-                                <StatCard
-                                    icon={FiTrendingUp}
-                                    title="Total Transactions"
-                                    value={(chartData?.totalInvoices || 0) + (chartData?.totalPayments || 0)}
-                                    color="info"
-                                    subtitle="Selected tenant transactions"
-                                />
-                            </Col>
-                        </Row>
-
-                        {/* Charts Row */}
-                        <Row className="mb-4">
-                            <Col lg={7} className="mb-4">
+                            <Col lg={8} md={12} className="mb-3">
                                 <Card className="border-0 shadow-sm h-100">
-                                    <CardHeader className="bg-white border-0 pt-4">
-                                        <div className="d-flex align-items-center">
-                                            <FiBarChart2 size={18} className="text-primary me-2" />
-                                            <h6 className="mb-0">Invoice vs Reconciled Payment Trend</h6>
-                                        </div>
-                                    </CardHeader>
-                                    <CardBody>
-                                        <div style={{ height: "350px" }}>
-                                            <Line data={monthlyLineData} options={chartOptions} />
-                                        </div>
-                                    </CardBody>
-                                </Card>
-                            </Col>
-                            <Col lg={5} className="mb-4">
-                                <Card className="border-0 shadow-sm h-100">
-                                    <CardHeader className="bg-white border-0 pt-4">
-                                        <div className="d-flex align-items-center">
-                                            <FiPieChart size={18} className="text-primary me-2" />
-                                            <h6 className="mb-0">Transaction Status Distribution</h6>
-                                        </div>
-                                    </CardHeader>
-                                    <CardBody>
-                                        <div style={{ height: "350px" }}>
-                                            <Doughnut data={statusDoughnutData} options={doughnutOptions} />
+                                    <CardBody className="p-4">
+                                        <h5 className="mb-3">Tenant Transaction Summary</h5>
+                                        <div className="table-responsive">
+                                            <table className="table table-bordered mb-0" style={{ borderColor: "#cbd5e1" }}>
+                                                <thead>
+                                                    <tr className="table-light">
+                                                        <th style={{ padding: "8px", border: "1px solid #cbd5e1" }}>Category</th>
+                                                        <th style={{ padding: "8px", border: "1px solid #cbd5e1", textAlign: "right" }}>Invoiced / Owed</th>
+                                                        <th style={{ padding: "8px", border: "1px solid #cbd5e1", textAlign: "right" }}>Reconciled Paid</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <tr>
+                                                        <td className="text-muted" style={{ padding: "8px", border: "1px solid #cbd5e1" }}>Monthly Invoices</td>
+                                                        <td className="fw-semibold text-primary" style={{ padding: "8px", border: "1px solid #cbd5e1", textAlign: "right" }}>{formatCurrency(chartData?.totalInvoiceAmount || 0)}</td>
+                                                        <td className="fw-semibold text-success" style={{ padding: "8px", border: "1px solid #cbd5e1", textAlign: "right" }}>{formatCurrency(chartData?.invoicePaid || 0)}</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td className="text-muted" style={{ padding: "8px", border: "1px solid #cbd5e1" }}>Beginning Balance</td>
+                                                        <td className="fw-semibold text-primary" style={{ padding: "8px", border: "1px solid #cbd5e1", textAlign: "right" }}>{formatCurrency(chartData?.beginningBalance || 0)}</td>
+                                                        <td className="fw-semibold text-success" style={{ padding: "8px", border: "1px solid #cbd5e1", textAlign: "right" }}>{formatCurrency(chartData?.beginningBalancePaid || 0)}</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td className="text-muted" style={{ padding: "8px", border: "1px solid #cbd5e1" }}>Security Deposit</td>
+                                                        <td className="fw-semibold text-primary" style={{ padding: "8px", border: "1px solid #cbd5e1", textAlign: "right" }}>{formatCurrency(chartData?.securityDeposit || 0)}</td>
+                                                        <td className="fw-semibold text-success" style={{ padding: "8px", border: "1px solid #cbd5e1", textAlign: "right" }}>{formatCurrency(chartData?.depositPaid || 0)}</td>
+                                                    </tr>
+                                                    <tr className="table-light fw-bold" style={{ borderTop: "2px solid #cbd5e1" }}>
+                                                        <td style={{ padding: "8px", border: "1px solid #cbd5e1" }}>Total</td>
+                                                        <td style={{ padding: "8px", border: "1px solid #cbd5e1", textAlign: "right", color: "#3b82f6" }}>{formatCurrency(chartData?.totalOwed || 0)}</td>
+                                                        <td style={{ padding: "8px", border: "1px solid #cbd5e1", textAlign: "right", color: "#10b981" }}>{formatCurrency(chartData?.totalPaymentAmount || 0)}</td>
+                                                    </tr>
+                                                    <tr className="fw-bold">
+                                                        <td colSpan="2" style={{ padding: "8px", border: "1px solid #cbd5e1" }}>Outstanding Balance</td>
+                                                        <td className={chartData?.outstandingBalance > 0 ? "text-danger" : "text-success"} style={{ padding: "8px", border: "1px solid #cbd5e1", textAlign: "right" }}>
+                                                            {formatCurrency(chartData?.outstandingBalance || 0)}
+                                                        </td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td className="text-muted" colSpan="2" style={{ padding: "8px", border: "1px solid #cbd5e1" }}>Total Transactions Count</td>
+                                                        <td className="fw-semibold text-info" style={{ padding: "8px", border: "1px solid #cbd5e1", textAlign: "right" }}>
+                                                            {(chartData?.totalInvoices || 0) + (chartData?.totalPayments || 0)}
+                                                        </td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
                                         </div>
                                     </CardBody>
                                 </Card>
@@ -886,31 +773,107 @@ const TenantHistoryReport = () => {
                                 </div>
                             </CardHeader>
                             <CardBody className="p-0">
-                                <DataTable
-                                    columns={columns}
-                                    data={filteredTransactions}
-                                    pagination
-                                    responsive
-                                    highlightOnHover
-                                    pointerOnHover
-                                    className="border-0"
-                                    paginationPerPage={10}
-                                    paginationRowsPerPageOptions={[10, 25, 50]}
-                                    customStyles={{
-                                        headRow: {
-                                            style: {
-                                                backgroundColor: "#f8f9fa",
-                                                borderTop: "none",
-                                                fontWeight: 600,
-                                            },
-                                        },
-                                        rows: {
-                                            style: {
-                                                minHeight: "72px",
-                                            },
-                                        },
-                                    }}
-                                />
+                                <div className="table-responsive px-4 pb-4">
+                                    <table className="table table-bordered align-middle mb-0" style={{ borderColor: "#cbd5e1" }}>
+                                        <thead className="table-light">
+                                            <tr style={{ backgroundColor: "#f8f9fa", borderBottom: "2px solid #cbd5e1" }}>
+                                                <th style={{ padding: "12px", color: "#1e293b", fontWeight: 600, border: "1px solid #cbd5e1", width: "70px", textAlign: "center" }}>SQN</th>
+                                                <th style={{ padding: "12px", color: "#1e293b", fontWeight: 600, border: "1px solid #cbd5e1" }}>Type</th>
+                                                <th style={{ padding: "12px", color: "#1e293b", fontWeight: 600, border: "1px solid #cbd5e1" }}>Reference</th>
+                                                <th style={{ padding: "12px", color: "#1e293b", fontWeight: 600, border: "1px solid #cbd5e1" }}>Lease</th>
+                                                <th style={{ padding: "12px", color: "#1e293b", fontWeight: 600, border: "1px solid #cbd5e1" }}>Amount</th>
+                                                <th style={{ padding: "12px", color: "#1e293b", fontWeight: 600, border: "1px solid #cbd5e1" }}>Paid/Balance</th>
+                                                <th style={{ padding: "12px", color: "#1e293b", fontWeight: 600, border: "1px solid #cbd5e1" }}>Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {filteredTransactions.length > 0 ? (
+                                                filteredTransactions.map((row, idx) => (
+                                                    <tr key={idx} style={{ borderBottom: "1px solid #cbd5e1" }}>
+                                                        <td style={{ padding: "12px", border: "1px solid #cbd5e1", textAlign: "center" }}>{idx + 1}</td>
+                                                        <td style={{ padding: "12px", border: "1px solid #cbd5e1" }}>
+                                                            <Badge
+                                                                color={row.type === "invoice" ? "primary" : "success"}
+                                                                className="px-3 py-2"
+                                                            >
+                                                                {row.type === "invoice" ? "Invoice" : "Payment"}
+                                                            </Badge>
+                                                        </td>
+                                                        <td style={{ padding: "12px", border: "1px solid #cbd5e1" }}>
+                                                            <div className="fw-semibold">{row.reference}</div>
+                                                            <small className="text-muted">{formatDate(row.date)}</small>
+                                                        </td>
+                                                        <td style={{ padding: "12px", border: "1px solid #cbd5e1" }}>
+                                                            <div>{row.lease?.leaseNumber || "-"}</div>
+                                                            <small className="text-muted">Rent: {formatCurrency(row.lease?.rentAmount)}</small>
+                                                        </td>
+                                                        <td style={{ padding: "12px", border: "1px solid #cbd5e1", fontWeight: "bold" }} className={row.type === "payment" ? "text-success" : "text-primary"}>
+                                                            {row.type === "payment" ? "+" : ""}{formatCurrency(row.amount)}
+                                                        </td>
+                                                        <td style={{ padding: "12px", border: "1px solid #cbd5e1" }}>
+                                                            {row.type === "invoice" ? (
+                                                                <div>
+                                                                    <div className="text-success">Paid: {formatCurrency(row.paidAmount)}</div>
+                                                                    <div className={row.balance > 0 ? "text-danger" : "text-success"}>
+                                                                        Balance: {formatCurrency(row.balance)}
+                                                                    </div>
+                                                                </div>
+                                                            ) : (
+                                                                <div className="text-muted">-</div>
+                                                            )}
+                                                        </td>
+                                                        <td style={{ padding: "12px", border: "1px solid #cbd5e1" }}>
+                                                            <Badge
+                                                                color={getStatusColor(row.status)}
+                                                                className="d-inline-flex align-items-center gap-1 px-3 py-2"
+                                                            >
+                                                                {getStatusIcon(row.status)}
+                                                                <span className="ms-1 text-capitalize">{row.status?.replace("_", " ") || "Pending"}</span>
+                                                            </Badge>
+                                                        </td>
+                                                    </tr>
+                                                ))
+                                            ) : (
+                                                <tr>
+                                                    <td colSpan="7" className="text-center p-4 text-muted" style={{ border: "1px solid #cbd5e1" }}>
+                                                        No records found
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </tbody>
+                                        <tfoot style={{ borderTop: "2px solid #64748b" }}>
+                                            <tr style={{ backgroundColor: "#f8f9fa" }}>
+                                                <td colSpan="4" className="text-end fw-bold" style={{ padding: "12px", border: "1px solid #cbd5e1" }}>Total Owed / Reconciled Paid / Balance:</td>
+                                                <td className="fw-bold text-primary" style={{ padding: "12px", border: "1px solid #cbd5e1" }}>
+                                                    <div>{formatCurrency(chartData?.totalOwed || 0)}</div>
+                                                    <small className="text-muted d-block fw-normal">Invoices: {formatCurrency(chartData?.totalInvoiceAmount || 0)}</small>
+                                                    {(chartData?.beginningBalance || 0) > 0 && (
+                                                        <small className="text-muted d-block fw-normal">Beg. Balance: {formatCurrency(chartData?.beginningBalance)}</small>
+                                                    )}
+                                                    {(chartData?.securityDeposit || 0) > 0 && (
+                                                        <small className="text-muted d-block fw-normal">Sec. Deposit: {formatCurrency(chartData?.securityDeposit)}</small>
+                                                    )}
+                                                </td>
+                                                <td style={{ padding: "12px", border: "1px solid #cbd5e1" }}>
+                                                    <div className="text-success fw-bold">Paid: {formatCurrency(chartData?.totalPaymentAmount || 0)}</div>
+                                                    <small className="text-muted d-block fw-normal">Invoices: {formatCurrency(chartData?.invoicePaid || 0)}</small>
+                                                    {(chartData?.beginningBalancePaid || 0) > 0 && (
+                                                        <small className="text-muted d-block fw-normal">Beg. Balance: {formatCurrency(chartData?.beginningBalancePaid)}</small>
+                                                    )}
+                                                    {(chartData?.depositPaid || 0) > 0 && (
+                                                        <small className="text-muted d-block fw-normal">Sec. Deposit: {formatCurrency(chartData?.depositPaid)}</small>
+                                                    )}
+                                                </td>
+                                                <td style={{ padding: "12px", border: "1px solid #cbd5e1" }}>
+                                                    <div className="fw-bold text-muted small">Outstanding Balance:</div>
+                                                    <div className={`fw-bold ${chartData?.outstandingBalance > 0 ? "text-danger" : "text-success"}`}>
+                                                        {formatCurrency(chartData?.outstandingBalance || 0)}
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+                                </div>
                             </CardBody>
                         </Card>
                     </>

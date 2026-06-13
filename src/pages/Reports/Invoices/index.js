@@ -32,36 +32,11 @@ import {
     FiActivity,
     FiZap,
 } from "react-icons/fi";
-import {
-    Chart as ChartJS,
-    CategoryScale,
-    LinearScale,
-    BarElement,
-    Title,
-    Tooltip,
-    Legend,
-    ArcElement,
-    PointElement,
-    LineElement,
-} from "chart.js";
-import { Bar, Pie, Doughnut } from "react-chartjs-2";
 import BreadCrumb from "../../../Components/Common/BreadCrumb";
 import { ReportsAPI } from "../../../helpers/backend_helper";
 import { getBuildings as onGetBuildings, getLeases as onGetLeases } from "../../../slices/thunks";
 import { useDispatch, useSelector } from "react-redux";
 import { createSelector } from "reselect";
-
-ChartJS.register(
-    CategoryScale,
-    LinearScale,
-    BarElement,
-    Title,
-    Tooltip,
-    Legend,
-    ArcElement,
-    PointElement,
-    LineElement
-);
 
 const selectStyles = {
     control: (base) => ({
@@ -133,7 +108,7 @@ const StatCard = ({ icon: Icon, title, value, color, subtitle, trend }) => (
 );
 
 const InvoiceReport = () => {
-    document.title = "Invoice Report | Apartment Management";
+    document.title = "Invoice Report | Degaanly";
     const dispatch = useDispatch();
 
     const buildingsSelector = createSelector((state) => state.Buildings, (s) => s.buildings || []);
@@ -217,208 +192,7 @@ const InvoiceReport = () => {
         fetchReport();
     }, [fetchReport]);
 
-    // Prepare chart data
-    const chartData = useMemo(() => {
-        if (!reportData?.details) return null;
 
-        const statusCounts = {
-            paid: 0,
-            overdue: 0,
-            partially_paid: 0,
-            pending: 0,
-        };
-        const statusAmounts = {
-            paid: 0,
-            overdue: 0,
-            partially_paid: 0,
-            pending: 0,
-        };
-        const monthlyTotals = {};
-        const buildingTotals = {};
-
-        reportData.details.forEach((invoice) => {
-            const status = invoice.status?.toLowerCase() || "pending";
-            statusCounts[status] = (statusCounts[status] || 0) + 1;
-            statusAmounts[status] = (statusAmounts[status] || 0) + (invoice.totalAmount || 0);
-
-            const monthYear = `${invoice.period?.year}-${String(invoice.period?.month).padStart(2, "0")}`;
-            monthlyTotals[monthYear] = (monthlyTotals[monthYear] || 0) + (invoice.totalAmount || 0);
-
-            const buildingName = invoice.building?.name || "Unknown";
-            buildingTotals[buildingName] = (buildingTotals[buildingName] || 0) + (invoice.totalAmount || 0);
-        });
-
-        return {
-            statusCounts,
-            statusAmounts,
-            monthlyTotals,
-            buildingTotals,
-        };
-    }, [reportData]);
-
-    // Status Distribution Pie Chart
-    const statusPieData = {
-        labels: Object.keys(chartData?.statusAmounts || {}).map(
-            (key) => key.replace("_", " ").toUpperCase()
-        ),
-        datasets: [
-            {
-                data: Object.values(chartData?.statusAmounts || {}),
-                backgroundColor: ["#10b981", "#ef4444", "#f59e0b", "#6b7280"],
-                borderWidth: 0,
-            },
-        ],
-    };
-
-    // Monthly Trend Bar Chart
-    const monthlyBarData = {
-        labels: Object.keys(chartData?.monthlyTotals || {}),
-        datasets: [
-            {
-                label: "Invoice Total ($)",
-                data: Object.values(chartData?.monthlyTotals || {}),
-                backgroundColor: "rgba(59, 130, 246, 0.8)",
-                borderRadius: 8,
-            },
-        ],
-    };
-
-    // Building Distribution Doughnut Chart
-    const buildingDoughnutData = {
-        labels: Object.keys(chartData?.buildingTotals || {}),
-        datasets: [
-            {
-                data: Object.values(chartData?.buildingTotals || {}),
-                backgroundColor: ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6"],
-                borderWidth: 0,
-            },
-        ],
-    };
-
-    const chartOptions = {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-            legend: {
-                position: "top",
-                labels: {
-                    usePointStyle: true,
-                    boxWidth: 10,
-                },
-            },
-            tooltip: {
-                callbacks: {
-                    label: (context) => {
-                        let label = context.dataset.label || "";
-                        if (label) label += ": ";
-                        if (context.parsed.y !== undefined) {
-                            label += formatCurrency(context.parsed.y);
-                        } else {
-                            label += formatCurrency(context.parsed);
-                        }
-                        return label;
-                    },
-                },
-            },
-        },
-    };
-
-    const pieOptions = {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-            legend: {
-                position: "bottom",
-                labels: {
-                    usePointStyle: true,
-                },
-            },
-            tooltip: {
-                callbacks: {
-                    label: (context) => {
-                        const value = context.raw;
-                        const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                        const percentage = ((value / total) * 100).toFixed(1);
-                        return `${context.label}: ${formatCurrency(value)} (${percentage}%)`;
-                    },
-                },
-            },
-        },
-    };
-
-    const columns = [
-        {
-            name: "Invoice",
-            cell: (row) => (
-                <div>
-                    <div className="fw-semibold mb-1">{row.invoiceNumber}</div>
-                    <small className="text-muted">Due: {formatDate(row.period?.dueDate)}</small>
-                </div>
-            ),
-        },
-        {
-            name: "Tenant/Unit",
-            cell: (row) => (
-                <div>
-                    <div className="fw-semibold">{row.tenant?.fullName || "-"}</div>
-                    <small className="text-muted">Unit {row.unit?.unitNumber || "-"}</small>
-                </div>
-            ),
-        },
-        {
-            name: "Amount",
-            cell: (row) => (
-                <div>
-                    <div className="fw-bold text-primary">{formatCurrency(row.totalAmount)}</div>
-                    <small className="text-muted">Rent: {formatCurrency(row.rentAmount)}</small>
-                </div>
-            ),
-        },
-        {
-            name: "Paid",
-            cell: (row) => (
-                <div>
-                    <div className="fw-semibold text-success">{formatCurrency(row.paidAmount)}</div>
-                    <small className="text-muted">{row.paymentHistory?.length || 0} payments</small>
-                </div>
-            ),
-        },
-        {
-            name: "Balance",
-            cell: (row) => (
-                <div className={`fw-bold ${row.balance > 0 ? "text-danger" : "text-success"}`}>
-                    {formatCurrency(row.balance)}
-                </div>
-            ),
-        },
-        {
-            name: "Status",
-            cell: (row) => (
-                <Badge
-                    color={getStatusColor(row.status)}
-                    className="d-inline-flex align-items-center gap-1 px-3 py-2"
-                >
-                    {getStatusIcon(row.status)}
-                    <span className="ms-1 text-capitalize">{row.status?.replace("_", " ") || "Pending"}</span>
-                </Badge>
-            ),
-        },
-        {
-            name: "Utilities",
-            cell: (row) => (
-                <div>
-                    {row.utilityBreakdown?.length > 0 ? (
-                        <>
-                            <div className="fw-semibold">{formatCurrency(row.utilityAmount)}</div>
-                            <small className="text-muted">{row.utilityBreakdown.length} items</small>
-                        </>
-                    ) : (
-                        <span className="text-muted">-</span>
-                    )}
-                </div>
-            ),
-        },
-    ];
 
     const filteredRows = useMemo(() => {
         if (!reportData?.details) return [];
@@ -455,44 +229,69 @@ const InvoiceReport = () => {
         const printWindow = window.open("", "_blank", "width=1200,height=800");
         if (!printWindow) return;
 
+        const summary = reportData?.summary || {};
         const summaryHtml = `
-      <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 30px;">
-        ${Object.entries(reportData?.summary || {}).map(([key, value]) => `
-          <div style="background: #f8f9fa; padding: 20px; border-radius: 12px; text-align: center;">
-            <div style="color: #6c757d; font-size: 12px; margin-bottom: 8px;">${key.replace(/([A-Z])/g, " $1").replace(/([A-Z])/g, " $1").trim()}</div>
-            <div style="font-size: 24px; font-weight: bold; color: #3b82f6;">${typeof value === "number" ? formatCurrency(value) : value}</div>
-          </div>
-        `).join("")}
+      <div style="max-width: 500px; margin-bottom: 30px;">
+        <h3 style="font-size: 16px; margin-bottom: 12px; color: #0f172a; border-bottom: 2px solid #cbd5e1; padding-bottom: 6px;">Report Summary</h3>
+        <table style="width: 100%; border-collapse: collapse; border: 1px solid #cbd5e1;">
+          <tbody>
+            <tr>
+              <td style="padding: 8px; border: 1px solid #cbd5e1; color: #64748b;">Total Invoices</td>
+              <td style="padding: 8px; border: 1px solid #cbd5e1; text-align: right; font-weight: bold;">${summary.totalInvoicesGenerated || 0}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px; border: 1px solid #cbd5e1; color: #64748b;">Grand Total</td>
+              <td style="padding: 8px; border: 1px solid #cbd5e1; text-align: right; font-weight: bold; color: #3b82f6;">${formatCurrency(summary.grandTotalInvoiced)}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px; border: 1px solid #cbd5e1; color: #64748b;">Total Paid</td>
+              <td style="padding: 8px; border: 1px solid #cbd5e1; text-align: right; font-weight: bold; color: #10b981;">${formatCurrency(summary.totalPaid)}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px; border: 1px solid #cbd5e1; color: #64748b;">Outstanding</td>
+              <td style="padding: 8px; border: 1px solid #cbd5e1; text-align: right; font-weight: bold; color: #ef4444;">${formatCurrency(summary.totalOutstanding)}</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     `;
 
+        const totalAmount = filteredRows.reduce((sum, row) => sum + (row.totalAmount || 0), 0);
+        const totalPaid = filteredRows.reduce((sum, row) => sum + (row.paidAmount || 0), 0);
+        const totalBalance = filteredRows.reduce((sum, row) => sum + (row.balance || 0), 0);
+        const totalUtilities = filteredRows.reduce((sum, row) => sum + (row.utilityAmount || 0), 0);
+
         const tableHtml = `
-      <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
+      <table style="width: 100%; border-collapse: collapse; margin-top: 20px; border: 1px solid #cbd5e1;">
         <thead>
-          <tr style="background: #f8f9fa; border-bottom: 2px solid #e2e8f0;">
-            <th style="padding: 12px; text-align: left;">Invoice #</th>
-            <th style="padding: 12px; text-align: left;">Tenant</th>
-            <th style="padding: 12px; text-align: right;">Total</th>
-            <th style="padding: 12px; text-align: right;">Paid</th>
-            <th style="padding: 12px; text-align: right;">Balance</th>
-            <th style="padding: 12px; text-align: center;">Status</th>
+          <tr style="background: #f8f9fa; border-bottom: 2px solid #cbd5e1;">
+            <th style="padding: 12px; text-align: center; border: 1px solid #cbd5e1; width: 60px;">SQN</th>
+            <th style="padding: 12px; text-align: left; border: 1px solid #cbd5e1;">Invoice #</th>
+            <th style="padding: 12px; text-align: left; border: 1px solid #cbd5e1;">Tenant</th>
+            <th style="padding: 12px; text-align: right; border: 1px solid #cbd5e1;">Total Amount</th>
+            <th style="padding: 12px; text-align: right; border: 1px solid #cbd5e1;">Paid</th>
+            <th style="padding: 12px; text-align: right; border: 1px solid #cbd5e1;">Balance</th>
+            <th style="padding: 12px; text-align: right; border: 1px solid #cbd5e1;">Utilities</th>
+            <th style="padding: 12px; text-align: center; border: 1px solid #cbd5e1;">Status</th>
           </tr>
         </thead>
         <tbody>
-          ${filteredRows.map((row) => `
-            <tr style="border-bottom: 1px solid #e2e8f0;">
-              <td style="padding: 12px;">
+          ${filteredRows.map((row, idx) => `
+            <tr style="border-bottom: 1px solid #cbd5e1;">
+              <td style="padding: 12px; text-align: center; border: 1px solid #cbd5e1;">${idx + 1}</td>
+              <td style="padding: 12px; border: 1px solid #cbd5e1;">
                 ${row.invoiceNumber}<br/>
                 <small>Due: ${formatDate(row.period?.dueDate)}</small>
               </td>
-              <td style="padding: 12px;">
+              <td style="padding: 12px; border: 1px solid #cbd5e1;">
                 ${row.tenant?.fullName || "-"}<br/>
                 <small>Unit ${row.unit?.unitNumber || "-"}</small>
               </td>
-              <td style="padding: 12px; text-align: right; font-weight: bold;">${formatCurrency(row.totalAmount)}</td>
-              <td style="padding: 12px; text-align: right;">${formatCurrency(row.paidAmount)}</td>
-              <td style="padding: 12px; text-align: right; ${row.balance > 0 ? 'color: #ef4444;' : 'color: #10b981;'}">${formatCurrency(row.balance)}</td>
-              <td style="padding: 12px; text-align: center;">
+              <td style="padding: 12px; text-align: right; font-weight: bold; border: 1px solid #cbd5e1; color: #3b82f6;">${formatCurrency(row.totalAmount)}</td>
+              <td style="padding: 12px; text-align: right; border: 1px solid #cbd5e1; color: #10b981;">${formatCurrency(row.paidAmount)}</td>
+              <td style="padding: 12px; text-align: right; border: 1px solid #cbd5e1; ${row.balance > 0 ? 'color: #ef4444; font-weight: bold;' : 'color: #10b981;'}">${formatCurrency(row.balance)}</td>
+              <td style="padding: 12px; text-align: right; border: 1px solid #cbd5e1;">${formatCurrency(row.utilityAmount)}</td>
+              <td style="padding: 12px; text-align: center; border: 1px solid #cbd5e1;">
                 <span style="background: ${row.status === 'paid' ? '#d4edda' : row.status === 'overdue' ? '#f8d7da' : '#fff3cd'}; padding: 4px 8px; border-radius: 4px;">
                   ${row.status?.toUpperCase() || "PENDING"}
                 </span>
@@ -500,6 +299,16 @@ const InvoiceReport = () => {
             </tr>
           `).join("")}
         </tbody>
+        <tfoot>
+          <tr style="background: #f8f9fa; font-weight: bold; border-top: 2px solid #64748b;">
+            <td colspan="3" style="padding: 12px; text-align: right; border: 1px solid #cbd5e1;">Total:</td>
+            <td style="padding: 12px; text-align: right; border: 1px solid #cbd5e1; color: #3b82f6;">${formatCurrency(totalAmount)}</td>
+            <td style="padding: 12px; text-align: right; border: 1px solid #cbd5e1; color: #10b981;">${formatCurrency(totalPaid)}</td>
+            <td style="padding: 12px; text-align: right; border: 1px solid #cbd5e1; color: #ef4444;">${formatCurrency(totalBalance)}</td>
+            <td style="padding: 12px; text-align: right; border: 1px solid #cbd5e1;">${formatCurrency(totalUtilities)}</td>
+            <td style="border: 1px solid #cbd5e1;"></td>
+          </tr>
+        </tfoot>
       </table>
     `;
 
@@ -524,7 +333,7 @@ const InvoiceReport = () => {
             .header {
               margin-bottom: 30px;
               padding-bottom: 20px;
-              border-bottom: 2px solid #e2e8f0;
+              border-bottom: 2px solid #cbd5e1;
             }
             .date {
               color: #64748b;
@@ -549,7 +358,7 @@ const InvoiceReport = () => {
           ${summaryHtml}
           ${tableHtml}
           <div style="margin-top: 30px; text-align: center; color: #64748b; font-size: 12px;">
-            Generated by Apartment Management System
+            Generated by Degaanly System
           </div>
         </body>
       </html>
@@ -669,131 +478,38 @@ const InvoiceReport = () => {
                     </Card>
                 ) : reportData ? (
                     <>
-                        {/* Summary Stats Cards */}
+                        {/* Summary Table */}
                         <Row className="mb-4">
-                            <Col lg={3} md={6} className="mb-3">
-                                <StatCard
-                                    icon={FiFileText}
-                                    title="Total Invoices"
-                                    value={summary?.totalInvoicesGenerated || 0}
-                                    color="primary"
-                                    subtitle="Generated this period"
-                                />
-                            </Col>
-                            <Col lg={3} md={6} className="mb-3">
-                                <StatCard
-                                    icon={FiDollarSign}
-                                    title="Grand Total"
-                                    value={formatCurrency(summary?.grandTotalInvoiced || 0)}
-                                    color="success"
-                                    subtitle="Total invoiced amount"
-                                />
-                            </Col>
-                            <Col lg={3} md={6} className="mb-3">
-                                <StatCard
-                                    icon={FiCheckCircle}
-                                    title="Total Paid"
-                                    value={formatCurrency(summary?.totalPaid || 0)}
-                                    color="info"
-                                    subtitle={`${((summary?.totalPaid / summary?.grandTotalInvoiced) * 100).toFixed(1)}% collected`}
-                                />
-                            </Col>
-                            <Col lg={3} md={6} className="mb-3">
-                                <StatCard
-                                    icon={FiAlertCircle}
-                                    title="Outstanding"
-                                    value={formatCurrency(summary?.totalOutstanding || 0)}
-                                    color="warning"
-                                    subtitle="Pending collection"
-                                />
-                            </Col>
-                        </Row>
-
-                        {/* Second Row Stats */}
-                        <Row className="mb-4">
-                            <Col lg={4} md={6} className="mb-3">
-                                <StatCard
-                                    icon={FiTrendingUp}
-                                    title="Rent Amount"
-                                    value={formatCurrency(summary?.totalRentAmount || 0)}
-                                    color="info"
-                                    subtitle="Base rent total"
-                                />
-                            </Col>
-                            <Col lg={4} md={6} className="mb-3">
-                                <StatCard
-                                    icon={FiZap}
-                                    title="Utility Amount"
-                                    value={formatCurrency(summary?.totalUtilityAmount || 0)}
-                                    color="warning"
-                                    subtitle="Utility charges"
-                                />
-                            </Col>
-                            <Col lg={4} md={6} className="mb-3">
-                                <StatCard
-                                    icon={FiClock}
-                                    title="Previous Balance"
-                                    value={formatCurrency(summary?.totalPreviousBalance || 0)}
-                                    color="secondary"
-                                    subtitle="Carried forward"
-                                />
-                            </Col>
-                        </Row>
-
-                        {/* Charts Row */}
-                        <Row className="mb-4">
-                            <Col lg={5} className="mb-4">
+                            <Col md={6} className="mb-3">
                                 <Card className="border-0 shadow-sm h-100">
-                                    <CardHeader className="bg-white border-0 pt-4">
-                                        <div className="d-flex align-items-center">
-                                            <FiPieChart size={18} className="text-primary me-2" />
-                                            <h6 className="mb-0">Invoice Status Distribution</h6>
-                                        </div>
-                                    </CardHeader>
-                                    <CardBody>
-                                        <div style={{ height: "320px" }}>
-                                            <Pie data={statusPieData} options={pieOptions} />
-                                        </div>
-                                    </CardBody>
-                                </Card>
-                            </Col>
-                            <Col lg={7} className="mb-4">
-                                <Card className="border-0 shadow-sm h-100">
-                                    <CardHeader className="bg-white border-0 pt-4">
-                                        <div className="d-flex align-items-center">
-                                            <FiBarChart2 size={18} className="text-primary me-2" />
-                                            <h6 className="mb-0">Monthly Invoice Trends</h6>
-                                        </div>
-                                    </CardHeader>
-                                    <CardBody>
-                                        <div style={{ height: "320px" }}>
-                                            <Bar data={monthlyBarData} options={chartOptions} />
+                                    <CardBody className="p-4">
+                                        <h5 className="mb-3">Report Summary</h5>
+                                        <div className="table-responsive">
+                                            <table className="table table-bordered mb-0" style={{ borderColor: "#cbd5e1" }}>
+                                                <tbody>
+                                                    <tr>
+                                                        <td className="text-muted" style={{ padding: "8px", border: "1px solid #cbd5e1" }}>Total Invoices</td>
+                                                        <td className="fw-bold" style={{ padding: "8px", border: "1px solid #cbd5e1", textAlign: "right" }}>{summary?.totalInvoicesGenerated || 0}</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td className="text-muted" style={{ padding: "8px", border: "1px solid #cbd5e1" }}>Grand Total</td>
+                                                        <td className="fw-bold text-primary" style={{ padding: "8px", border: "1px solid #cbd5e1", textAlign: "right" }}>{formatCurrency(summary?.grandTotalInvoiced || 0)}</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td className="text-muted" style={{ padding: "8px", border: "1px solid #cbd5e1" }}>Total Paid</td>
+                                                        <td className="fw-bold text-success" style={{ padding: "8px", border: "1px solid #cbd5e1", textAlign: "right" }}>{formatCurrency(summary?.totalPaid || 0)}</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td className="text-muted" style={{ padding: "8px", border: "1px solid #cbd5e1" }}>Outstanding</td>
+                                                        <td className="fw-bold text-danger" style={{ padding: "8px", border: "1px solid #cbd5e1", textAlign: "right" }}>{formatCurrency(summary?.totalOutstanding || 0)}</td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
                                         </div>
                                     </CardBody>
                                 </Card>
                             </Col>
                         </Row>
-
-                        {/* Building Distribution */}
-                        {Object.keys(chartData?.buildingTotals || {}).length > 1 && (
-                            <Row className="mb-4">
-                                <Col lg={12}>
-                                    <Card className="border-0 shadow-sm">
-                                        <CardHeader className="bg-white border-0 pt-4">
-                                            <div className="d-flex align-items-center">
-                                                <FiUsers size={18} className="text-primary me-2" />
-                                                <h6 className="mb-0">Building Distribution</h6>
-                                            </div>
-                                        </CardHeader>
-                                        <CardBody>
-                                            <div style={{ height: "300px" }}>
-                                                <Doughnut data={buildingDoughnutData} options={pieOptions} />
-                                            </div>
-                                        </CardBody>
-                                    </Card>
-                                </Col>
-                            </Row>
-                        )}
 
                         {/* Search and Details Table */}
                         <Card className="border-0 shadow-sm">
@@ -812,31 +528,95 @@ const InvoiceReport = () => {
                                 </div>
                             </CardHeader>
                             <CardBody className="p-0">
-                                <DataTable
-                                    columns={columns}
-                                    data={filteredRows}
-                                    pagination
-                                    responsive
-                                    highlightOnHover
-                                    pointerOnHover
-                                    className="border-0"
-                                    paginationPerPage={10}
-                                    paginationRowsPerPageOptions={[10, 25, 50]}
-                                    customStyles={{
-                                        headRow: {
-                                            style: {
-                                                backgroundColor: "#f8f9fa",
-                                                borderTop: "none",
-                                                fontWeight: 600,
-                                            },
-                                        },
-                                        rows: {
-                                            style: {
-                                                minHeight: "72px",
-                                            },
-                                        },
-                                    }}
-                                />
+                                <div className="table-responsive px-4 pb-4">
+                                    <table className="table table-bordered align-middle mb-0" style={{ borderColor: "#cbd5e1" }}>
+                                        <thead className="table-light">
+                                            <tr style={{ backgroundColor: "#f8f9fa", borderBottom: "2px solid #cbd5e1" }}>
+                                                <th style={{ padding: "12px", color: "#1e293b", fontWeight: 600, border: "1px solid #cbd5e1", width: "70px", textAlign: "center" }}>SQN</th>
+                                                <th style={{ padding: "12px", color: "#1e293b", fontWeight: 600, border: "1px solid #cbd5e1" }}>Invoice</th>
+                                                <th style={{ padding: "12px", color: "#1e293b", fontWeight: 600, border: "1px solid #cbd5e1" }}>Tenant/Unit</th>
+                                                <th style={{ padding: "12px", color: "#1e293b", fontWeight: 600, border: "1px solid #cbd5e1" }}>Amount</th>
+                                                <th style={{ padding: "12px", color: "#1e293b", fontWeight: 600, border: "1px solid #cbd5e1" }}>Paid</th>
+                                                <th style={{ padding: "12px", color: "#1e293b", fontWeight: 600, border: "1px solid #cbd5e1" }}>Balance</th>
+                                                <th style={{ padding: "12px", color: "#1e293b", fontWeight: 600, border: "1px solid #cbd5e1" }}>Status</th>
+                                                <th style={{ padding: "12px", color: "#1e293b", fontWeight: 600, border: "1px solid #cbd5e1" }}>Utilities</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {filteredRows.length > 0 ? (
+                                                filteredRows.map((row, rowIdx) => (
+                                                    <tr key={row._id} style={{ borderBottom: "1px solid #cbd5e1" }}>
+                                                        <td style={{ padding: "12px", border: "1px solid #cbd5e1", textAlign: "center" }}>{rowIdx + 1}</td>
+                                                        <td style={{ padding: "12px", border: "1px solid #cbd5e1" }}>
+                                                            <div className="fw-semibold mb-1">{row.invoiceNumber}</div>
+                                                            <small className="text-muted">Due: {formatDate(row.period?.dueDate)}</small>
+                                                        </td>
+                                                        <td style={{ padding: "12px", border: "1px solid #cbd5e1" }}>
+                                                            <div className="fw-semibold">{row.tenant?.fullName || "-"}</div>
+                                                            <small className="text-muted">Unit {row.unit?.unitNumber || "-"}</small>
+                                                        </td>
+                                                        <td style={{ padding: "12px", border: "1px solid #cbd5e1" }}>
+                                                            <div className="fw-bold text-primary">{formatCurrency(row.totalAmount)}</div>
+                                                            <small className="text-muted">Rent: {formatCurrency(row.rentAmount)}</small>
+                                                        </td>
+                                                        <td style={{ padding: "12px", border: "1px solid #cbd5e1" }}>
+                                                            <div className="fw-semibold text-success">{formatCurrency(row.paidAmount)}</div>
+                                                            <small className="text-muted">{row.paymentHistory?.length || 0} payments</small>
+                                                        </td>
+                                                        <td style={{ padding: "12px", border: "1px solid #cbd5e1" }}>
+                                                            <div className={`fw-bold ${row.balance > 0 ? "text-danger" : "text-success"}`}>
+                                                                {formatCurrency(row.balance)}
+                                                            </div>
+                                                        </td>
+                                                        <td style={{ padding: "12px", border: "1px solid #cbd5e1" }}>
+                                                            <Badge
+                                                                color={getStatusColor(row.status)}
+                                                                className="d-inline-flex align-items-center gap-1 px-3 py-2"
+                                                            >
+                                                                {getStatusIcon(row.status)}
+                                                                <span className="ms-1 text-capitalize">{row.status?.replace("_", " ") || "Pending"}</span>
+                                                            </Badge>
+                                                        </td>
+                                                        <td style={{ padding: "12px", border: "1px solid #cbd5e1" }}>
+                                                            {row.utilityBreakdown?.length > 0 ? (
+                                                                <>
+                                                                    <div className="fw-semibold">{formatCurrency(row.utilityAmount)}</div>
+                                                                    <small className="text-muted">{row.utilityBreakdown.length} items</small>
+                                                                </>
+                                                            ) : (
+                                                                <span className="text-muted">-</span>
+                                                            )}
+                                                        </td>
+                                                    </tr>
+                                                ))
+                                            ) : (
+                                                <tr>
+                                                    <td colSpan="8" className="text-center p-4 text-muted" style={{ border: "1px solid #cbd5e1" }}>
+                                                        No records found
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </tbody>
+                                        <tfoot style={{ borderTop: "2px solid #64748b" }}>
+                                            <tr style={{ backgroundColor: "#f8f9fa" }}>
+                                                <td colSpan="3" className="text-end fw-bold" style={{ padding: "12px", border: "1px solid #cbd5e1" }}>Total:</td>
+                                                <td className="fw-bold text-primary" style={{ padding: "12px", border: "1px solid #cbd5e1" }}>
+                                                    {formatCurrency(filteredRows.reduce((sum, row) => sum + (row.totalAmount || 0), 0))}
+                                                </td>
+                                                <td className="fw-bold text-success" style={{ padding: "12px", border: "1px solid #cbd5e1" }}>
+                                                    {formatCurrency(filteredRows.reduce((sum, row) => sum + (row.paidAmount || 0), 0))}
+                                                </td>
+                                                <td className="fw-bold text-danger" style={{ padding: "12px", border: "1px solid #cbd5e1" }}>
+                                                    {formatCurrency(filteredRows.reduce((sum, row) => sum + (row.balance || 0), 0))}
+                                                </td>
+                                                <td style={{ border: "1px solid #cbd5e1" }}></td>
+                                                <td className="fw-bold" style={{ padding: "12px", border: "1px solid #cbd5e1" }}>
+                                                    {formatCurrency(filteredRows.reduce((sum, row) => sum + (row.utilityAmount || 0), 0))}
+                                                </td>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+                                </div>
                             </CardBody>
                         </Card>
                     </>

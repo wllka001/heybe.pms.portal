@@ -37,36 +37,11 @@ import {
     FiTool,
     FiTruck,
 } from "react-icons/fi";
-import {
-    Chart as ChartJS,
-    CategoryScale,
-    LinearScale,
-    BarElement,
-    Title,
-    Tooltip,
-    Legend,
-    ArcElement,
-    PointElement,
-    LineElement,
-} from "chart.js";
-import { Bar, Pie, Doughnut, Line } from "react-chartjs-2";
 import BreadCrumb from "../../../Components/Common/BreadCrumb";
 import { ReportsAPI } from "../../../helpers/backend_helper";
 import { getBuildings as onGetBuildings } from "../../../slices/thunks";
 import { useDispatch, useSelector } from "react-redux";
 import { createSelector } from "reselect";
-
-ChartJS.register(
-    CategoryScale,
-    LinearScale,
-    BarElement,
-    Title,
-    Tooltip,
-    Legend,
-    ArcElement,
-    PointElement,
-    LineElement
-);
 
 const selectStyles = {
     control: (base) => ({
@@ -162,7 +137,7 @@ const CategoryCard = ({ category, amount, color, icon: Icon }) => (
 );
 
 const ExpenseReport = () => {
-    document.title = "Expense Report | Apartment Management";
+    document.title = "Expense Report | Degaanly";
     const dispatch = useDispatch();
 
     const buildingsSelector = createSelector((state) => state.Buildings, (s) => s.buildings || []);
@@ -245,225 +220,7 @@ const ExpenseReport = () => {
         fetchReport();
     }, [fetchReport]);
 
-    // Prepare chart data
-    const chartData = useMemo(() => {
-        if (!reportData?.details) return null;
 
-        const categoryTotals = {};
-        const monthlyTotals = {};
-        const buildingTotals = {};
-        const paymentMethodTotals = {};
-
-        reportData.details.forEach((expense) => {
-            const cat = expense.category?.toLowerCase() || "other";
-            categoryTotals[cat] = (categoryTotals[cat] || 0) + (expense.amount || 0);
-
-            const date = new Date(expense.expenseDate);
-            const monthYear = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
-            monthlyTotals[monthYear] = (monthlyTotals[monthYear] || 0) + (expense.amount || 0);
-
-            const buildingName = expense.building?.name || "Unknown";
-            buildingTotals[buildingName] = (buildingTotals[buildingName] || 0) + (expense.amount || 0);
-
-            const method = expense.payment?.method?.toLowerCase() || "cash";
-            paymentMethodTotals[method] = (paymentMethodTotals[method] || 0) + (expense.amount || 0);
-        });
-
-        // Sort monthly totals by date
-        const sortedMonths = Object.keys(monthlyTotals).sort();
-        const monthlyData = sortedMonths.map(month => ({
-            month,
-            amount: monthlyTotals[month]
-        }));
-
-        return {
-            categoryTotals,
-            monthlyData,
-            buildingTotals,
-            paymentMethodTotals,
-        };
-    }, [reportData]);
-
-    // Category Distribution Pie Chart
-    const categoryPieData = {
-        labels: Object.keys(chartData?.categoryTotals || {}).map(
-            (key) => key.charAt(0).toUpperCase() + key.slice(1)
-        ),
-        datasets: [
-            {
-                data: Object.values(chartData?.categoryTotals || {}),
-                backgroundColor: ["#3b82f6", "#f59e0b", "#10b981", "#ef4444", "#8b5cf6", "#ec489a"],
-                borderWidth: 0,
-            },
-        ],
-    };
-
-    // Monthly Trend Line Chart
-    const monthlyLineData = {
-        labels: chartData?.monthlyData.map(d => d.month) || [],
-        datasets: [
-            {
-                label: "Monthly Expenses ($)",
-                data: chartData?.monthlyData.map(d => d.amount) || [],
-                borderColor: "#ef4444",
-                backgroundColor: "rgba(239, 68, 68, 0.1)",
-                fill: true,
-                tension: 0.4,
-                pointRadius: 4,
-                pointBackgroundColor: "#ef4444",
-            },
-        ],
-    };
-
-    // Building Distribution Doughnut Chart
-    const buildingDoughnutData = {
-        labels: Object.keys(chartData?.buildingTotals || {}),
-        datasets: [
-            {
-                data: Object.values(chartData?.buildingTotals || {}),
-                backgroundColor: ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6"],
-                borderWidth: 0,
-            },
-        ],
-    };
-
-    // Payment Method Pie Chart
-    const methodPieData = {
-        labels: Object.keys(chartData?.paymentMethodTotals || {}).map(
-            (key) => key.charAt(0).toUpperCase() + key.slice(1)
-        ),
-        datasets: [
-            {
-                data: Object.values(chartData?.paymentMethodTotals || {}),
-                backgroundColor: ["#10b981", "#3b82f6", "#f59e0b"],
-                borderWidth: 0,
-            },
-        ],
-    };
-
-    const chartOptions = {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-            legend: {
-                position: "top",
-                labels: {
-                    usePointStyle: true,
-                    boxWidth: 10,
-                },
-            },
-            tooltip: {
-                callbacks: {
-                    label: (context) => {
-                        let label = context.dataset.label || "";
-                        if (label) label += ": ";
-                        if (context.parsed.y !== undefined) {
-                            label += formatCurrency(context.parsed.y);
-                        } else {
-                            label += formatCurrency(context.parsed);
-                        }
-                        return label;
-                    },
-                },
-            },
-        },
-    };
-
-    const pieOptions = {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-            legend: {
-                position: "bottom",
-                labels: {
-                    usePointStyle: true,
-                },
-            },
-            tooltip: {
-                callbacks: {
-                    label: (context) => {
-                        const value = context.raw;
-                        const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                        const percentage = ((value / total) * 100).toFixed(1);
-                        return `${context.label}: ${formatCurrency(value)} (${percentage}%)`;
-                    },
-                },
-            },
-        },
-    };
-
-    const columns = [
-        {
-            name: "Expense",
-            cell: (row) => (
-                <div>
-                    <div className="fw-semibold mb-1">{row.expenseNumber}</div>
-                    <small className="text-muted">{formatDate(row.expenseDate)}</small>
-                </div>
-            ),
-        },
-        {
-            name: "Category",
-            cell: (row) => (
-                <div className="d-flex align-items-center gap-2">
-                    {getCategoryIcon(row.category)}
-                    <span className="fw-semibold text-capitalize">{row.category}</span>
-                </div>
-            ),
-        },
-        {
-            name: "Description",
-            cell: (row) => (
-                <div>
-                    <div>{row.description || "-"}</div>
-                    {row.payee?.name && (
-                        <small className="text-muted">Payee: {row.payee.name}</small>
-                    )}
-                </div>
-            ),
-        },
-        {
-            name: "Building",
-            cell: (row) => (
-                <div>
-                    <div className="fw-semibold">{row.building?.name || "-"}</div>
-                    <small className="text-muted">{row.building?.code || "-"}</small>
-                </div>
-            ),
-        },
-        {
-            name: "Amount",
-            cell: (row) => (
-                <div className="fw-bold text-danger">{formatCurrency(row.amount)}</div>
-            ),
-        },
-        {
-            name: "Payment",
-            cell: (row) => (
-                <div>
-                    <div className="d-flex align-items-center gap-1">
-                        {getPaymentMethodIcon(row.payment?.method)}
-                        <span className="text-capitalize">{row.payment?.method || "-"}</span>
-                    </div>
-                    {row.payment?.transactionId && (
-                        <small className="text-muted">Ref: {row.payment.transactionId}</small>
-                    )}
-                </div>
-            ),
-        },
-        {
-            name: "Status",
-            cell: (row) => (
-                <Badge
-                    color={row.approval?.status === "approved" ? "success" : "warning"}
-                    className="d-inline-flex align-items-center gap-1 px-3 py-2"
-                >
-                    {row.approval?.status === "approved" ? <FiCheckCircle size={12} /> : <FiClock size={12} />}
-                    <span className="ms-1 text-capitalize">{row.approval?.status || "Pending"}</span>
-                </Badge>
-            ),
-        },
-    ];
 
     const filteredRows = useMemo(() => {
         if (!reportData?.details) return [];
@@ -503,67 +260,89 @@ const ExpenseReport = () => {
         const summary = reportData?.summary || {};
         const categories = summary.expenseCategories || [];
         const summaryHtml = `
-      <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 30px;">
-        <div style="background: #f8f9fa; padding: 20px; border-radius: 12px; text-align: center;">
-          <div style="color: #6c757d; font-size: 12px;">Total Expenses</div>
-          <div style="font-size: 24px; font-weight: bold; color: #3b82f6;">${summary.totalExpenses || 0}</div>
+      <div style="display: flex; gap: 40px; margin-bottom: 30px; flex-wrap: wrap;">
+        <div style="min-width: 300px; flex: 1;">
+          <h3 style="font-size: 16px; margin-bottom: 12px; color: #0f172a; border-bottom: 2px solid #cbd5e1; padding-bottom: 6px;">Report Summary</h3>
+          <table style="width: 100%; border-collapse: collapse; border: 1px solid #cbd5e1;">
+            <tbody>
+              <tr>
+                <td style="padding: 8px; border: 1px solid #cbd5e1; color: #64748b;">Total Expenses</td>
+                <td style="padding: 8px; border: 1px solid #cbd5e1; text-align: right; font-weight: bold;">${summary.totalExpenses || 0}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px; border: 1px solid #cbd5e1; color: #64748b;">Total Amount</td>
+                <td style="padding: 8px; border: 1px solid #cbd5e1; text-align: right; font-weight: bold; color: #ef4444;">${formatCurrency(summary.totalExpenseAmount)}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px; border: 1px solid #cbd5e1; color: #64748b;">Monthly Average</td>
+                <td style="padding: 8px; border: 1px solid #cbd5e1; text-align: right; font-weight: bold;">${formatCurrency(summary.monthlyExpenseTotal)}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px; border: 1px solid #cbd5e1; color: #64748b;">Categories Count</td>
+                <td style="padding: 8px; border: 1px solid #cbd5e1; text-align: right; font-weight: bold;">${categories.length}</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
-        <div style="background: #f8f9fa; padding: 20px; border-radius: 12px; text-align: center;">
-          <div style="color: #6c757d; font-size: 12px;">Total Amount</div>
-          <div style="font-size: 24px; font-weight: bold; color: #ef4444;">${formatCurrency(summary.totalExpenseAmount)}</div>
+        ${categories.length > 0 ? `
+        <div style="min-width: 300px; flex: 1;">
+          <h3 style="font-size: 16px; margin-bottom: 12px; color: #0f172a; border-bottom: 2px solid #cbd5e1; padding-bottom: 6px;">Category Summary</h3>
+          <table style="width: 100%; border-collapse: collapse; border: 1px solid #cbd5e1;">
+            <thead>
+              <tr style="background: #f8f9fa;">
+                <th style="padding: 8px; border: 1px solid #cbd5e1; font-size: 11px; color: #1e293b; font-weight: 600;">Category</th>
+                <th style="padding: 8px; border: 1px solid #cbd5e1; font-size: 11px; color: #1e293b; font-weight: 600; text-align: right;">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${categories.map((cat) => `
+                <tr>
+                  <td style="padding: 8px; border: 1px solid #cbd5e1; text-transform: capitalize;">${cat.category}</td>
+                  <td style="padding: 8px; border: 1px solid #cbd5e1; text-align: right; font-weight: bold; color: #ef4444;">${formatCurrency(cat.amount)}</td>
+                </tr>
+              `).join("")}
+            </tbody>
+          </table>
         </div>
-        <div style="background: #f8f9fa; padding: 20px; border-radius: 12px; text-align: center;">
-          <div style="color: #6c757d; font-size: 12px;">Monthly Average</div>
-          <div style="font-size: 24px; font-weight: bold; color: #f59e0b;">${formatCurrency(summary.monthlyExpenseTotal)}</div>
-        </div>
-        <div style="background: #f8f9fa; padding: 20px; border-radius: 12px; text-align: center;">
-          <div style="color: #6c757d; font-size: 12px;">Categories</div>
-          <div style="font-size: 24px; font-weight: bold; color: #10b981;">${categories.length}</div>
-        </div>
+        ` : ""}
       </div>
     `;
 
-        const categoriesHtml = categories.length > 0 ? `
-      <div style="margin: 30px 0;">
-        <h3 style="margin-bottom: 20px;">Category Breakdown</h3>
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
-          ${categories.map(cat => `
-            <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; text-align: center;">
-              <div style="color: #6c757d; font-size: 12px;">${cat.category?.toUpperCase()}</div>
-              <div style="font-size: 18px; font-weight: bold;">${formatCurrency(cat.amount)}</div>
-            </div>
-          `).join("")}
-        </div>
-      </div>
-    ` : "";
-
+        const totalAmount = filteredRows.reduce((sum, row) => sum + (row.amount || 0), 0);
         const tableHtml = `
-      <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
+      <table style="width: 100%; border-collapse: collapse; margin-top: 20px; border: 1px solid #cbd5e1;">
         <thead>
-          <tr style="background: #f8f9fa; border-bottom: 2px solid #e2e8f0;">
-            <th style="padding: 12px; text-align: left;">Expense #</th>
-            <th style="padding: 12px; text-align: left;">Category</th>
-            <th style="padding: 12px; text-align: left;">Description</th>
-            <th style="padding: 12px; text-align: right;">Amount</th>
-            <th style="padding: 12px; text-align: center;">Status</th>
+          <tr style="background: #f8f9fa; border-bottom: 2px solid #cbd5e1;">
+            <th style="padding: 12px; text-align: center; border: 1px solid #cbd5e1; width: 60px;">SQN</th>
+            <th style="padding: 12px; text-align: left; border: 1px solid #cbd5e1;">Expense #</th>
+            <th style="padding: 12px; text-align: left; border: 1px solid #cbd5e1;">Category</th>
+            <th style="padding: 12px; text-align: left; border: 1px solid #cbd5e1;">Description</th>
+            <th style="padding: 12px; text-align: left; border: 1px solid #cbd5e1;">Building</th>
+            <th style="padding: 12px; text-align: right; border: 1px solid #cbd5e1;">Amount</th>
+            <th style="padding: 12px; text-align: center; border: 1px solid #cbd5e1;">Status</th>
            </tr>
         </thead>
         <tbody>
-          ${filteredRows.map((row) => `
-            <tr style="border-bottom: 1px solid #e2e8f0;">
-              <td style="padding: 12px;">
+          ${filteredRows.map((row, idx) => `
+            <tr style="border-bottom: 1px solid #cbd5e1;">
+              <td style="padding: 12px; text-align: center; border: 1px solid #cbd5e1;">${idx + 1}</td>
+              <td style="padding: 12px; border: 1px solid #cbd5e1;">
                 ${row.expenseNumber}<br/>
                 <small>${formatDate(row.expenseDate)}</small>
               </td>
-              <td style="padding: 12px;">
+              <td style="padding: 12px; border: 1px solid #cbd5e1;">
                 <span style="text-transform: capitalize;">${row.category}</span>
               </td>
-              <td style="padding: 12px;">
+              <td style="padding: 12px; border: 1px solid #cbd5e1;">
                 ${row.description || "-"}<br/>
                 <small>Payee: ${row.payee?.name || "-"}</small>
               </td>
-              <td style="padding: 12px; text-align: right; font-weight: bold;">${formatCurrency(row.amount)}</td>
-              <td style="padding: 12px; text-align: center;">
+              <td style="padding: 12px; border: 1px solid #cbd5e1;">
+                ${row.building?.name || "-"}<br/>
+                <small>${row.building?.code || "-"}</small>
+              </td>
+              <td style="padding: 12px; text-align: right; font-weight: bold; border: 1px solid #cbd5e1; color: #ef4444;">${formatCurrency(row.amount)}</td>
+              <td style="padding: 12px; text-align: center; border: 1px solid #cbd5e1;">
                 <span style="background: ${row.approval?.status === 'approved' ? '#d4edda' : '#fff3cd'}; padding: 4px 8px; border-radius: 4px;">
                   ${row.approval?.status?.toUpperCase() || "PENDING"}
                 </span>
@@ -571,6 +350,13 @@ const ExpenseReport = () => {
             </tr>
           `).join("")}
         </tbody>
+        <tfoot>
+          <tr style="background: #f8f9fa; font-weight: bold; border-top: 2px solid #64748b;">
+            <td colspan="5" style="padding: 12px; text-align: right; border: 1px solid #cbd5e1;">Total:</td>
+            <td style="padding: 12px; text-align: right; border: 1px solid #cbd5e1; color: #ef4444;">${formatCurrency(totalAmount)}</td>
+            <td style="border: 1px solid #cbd5e1;"></td>
+          </tr>
+        </tfoot>
       </table>
     `;
 
@@ -595,7 +381,7 @@ const ExpenseReport = () => {
             .header {
               margin-bottom: 30px;
               padding-bottom: 20px;
-              border-bottom: 2px solid #e2e8f0;
+              border-bottom: 2px solid #cbd5e1;
             }
             .date {
               color: #64748b;
@@ -618,10 +404,9 @@ const ExpenseReport = () => {
             <div class="date">Generated: ${new Date().toLocaleString()}</div>
           </div>
           ${summaryHtml}
-          ${categoriesHtml}
           ${tableHtml}
           <div style="margin-top: 30px; text-align: center; color: #64748b; font-size: 12px;">
-            Generated by Apartment Management System
+            Generated by Degaanly System
           </div>
         </body>
       </html>
@@ -740,128 +525,64 @@ const ExpenseReport = () => {
                     </Card>
                 ) : reportData ? (
                     <>
-                        {/* Summary Stats Cards */}
+                        {/* Summary Tables */}
                         <Row className="mb-4">
-                            <Col lg={3} md={6} className="mb-3">
-                                <StatCard
-                                    icon={FiBriefcase}
-                                    title="Total Expenses"
-                                    value={summary?.totalExpenses || 0}
-                                    color="primary"
-                                    subtitle="Total transactions"
-                                />
-                            </Col>
-                            <Col lg={3} md={6} className="mb-3">
-                                <StatCard
-                                    icon={FiDollarSign}
-                                    title="Total Amount"
-                                    value={formatCurrency(summary?.totalExpenseAmount || 0)}
-                                    color="danger"
-                                    subtitle="All expenses"
-                                />
-                            </Col>
-                            <Col lg={3} md={6} className="mb-3">
-                                <StatCard
-                                    icon={FiTrendingUp}
-                                    title="Monthly Total"
-                                    value={formatCurrency(summary?.monthlyExpenseTotal || 0)}
-                                    color="warning"
-                                    subtitle="Current period"
-                                />
-                            </Col>
-                            <Col lg={3} md={6} className="mb-3">
-                                <StatCard
-                                    icon={FiPieChart}
-                                    title="Categories"
-                                    value={categories.length}
-                                    color="success"
-                                    subtitle="Expense types"
-                                />
-                            </Col>
-                        </Row>
-
-                        {/* Category Cards */}
-                        {categories.length > 0 && (
-                            <Row className="mb-4">
-                                {categories.map((cat, idx) => (
-                                    <Col lg={2} md={4} sm={6} className="mb-3" key={idx}>
-                                        <CategoryCard
-                                            category={cat.category}
-                                            amount={cat.amount}
-                                            color={getCategoryColor(cat.category)}
-                                            icon={getCategoryIcon(cat.category).type}
-                                        />
-                                    </Col>
-                                ))}
-                            </Row>
-                        )}
-
-                        {/* Charts Row */}
-                        <Row className="mb-4">
-                            <Col lg={6} className="mb-4">
+                            <Col md={6} className="mb-3">
                                 <Card className="border-0 shadow-sm h-100">
-                                    <CardHeader className="bg-white border-0 pt-4">
-                                        <div className="d-flex align-items-center">
-                                            <FiPieChart size={18} className="text-primary me-2" />
-                                            <h6 className="mb-0">Expense Distribution by Category</h6>
-                                        </div>
-                                    </CardHeader>
-                                    <CardBody>
-                                        <div style={{ height: "320px" }}>
-                                            <Pie data={categoryPieData} options={pieOptions} />
+                                    <CardBody className="p-4">
+                                        <h5 className="mb-3">Report Summary</h5>
+                                        <div className="table-responsive">
+                                            <table className="table table-bordered mb-0" style={{ borderColor: "#cbd5e1" }}>
+                                                <tbody>
+                                                    <tr>
+                                                        <td className="text-muted" style={{ padding: "8px", border: "1px solid #cbd5e1" }}>Total Expenses</td>
+                                                        <td className="fw-bold" style={{ padding: "8px", border: "1px solid #cbd5e1", textAlign: "right" }}>{summary?.totalExpenses || 0}</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td className="text-muted" style={{ padding: "8px", border: "1px solid #cbd5e1" }}>Total Amount</td>
+                                                        <td className="fw-bold text-danger" style={{ padding: "8px", border: "1px solid #cbd5e1", textAlign: "right" }}>{formatCurrency(summary?.totalExpenseAmount || 0)}</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td className="text-muted" style={{ padding: "8px", border: "1px solid #cbd5e1" }}>Monthly Average</td>
+                                                        <td className="fw-bold" style={{ padding: "8px", border: "1px solid #cbd5e1", textAlign: "right" }}>{formatCurrency(summary?.monthlyExpenseTotal || 0)}</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td className="text-muted" style={{ padding: "8px", border: "1px solid #cbd5e1" }}>Categories Count</td>
+                                                        <td className="fw-bold" style={{ padding: "8px", border: "1px solid #cbd5e1", textAlign: "right" }}>{categories.length}</td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
                                         </div>
                                     </CardBody>
                                 </Card>
                             </Col>
-                            <Col lg={6} className="mb-4">
-                                <Card className="border-0 shadow-sm h-100">
-                                    <CardHeader className="bg-white border-0 pt-4">
-                                        <div className="d-flex align-items-center">
-                                            <FiTrendingUp size={18} className="text-primary me-2" />
-                                            <h6 className="mb-0">Monthly Expense Trend</h6>
-                                        </div>
-                                    </CardHeader>
-                                    <CardBody>
-                                        <div style={{ height: "320px" }}>
-                                            <Line data={monthlyLineData} options={chartOptions} />
-                                        </div>
-                                    </CardBody>
-                                </Card>
-                            </Col>
-                        </Row>
-
-                        {/* Second Row Charts */}
-                        <Row className="mb-4">
-                            <Col lg={6} className="mb-4">
-                                <Card className="border-0 shadow-sm h-100">
-                                    <CardHeader className="bg-white border-0 pt-4">
-                                        <div className="d-flex align-items-center">
-                                            <FiBarChart2 size={18} className="text-primary me-2" />
-                                            <h6 className="mb-0">Expenses by Building</h6>
-                                        </div>
-                                    </CardHeader>
-                                    <CardBody>
-                                        <div style={{ height: "300px" }}>
-                                            <Doughnut data={buildingDoughnutData} options={pieOptions} />
-                                        </div>
-                                    </CardBody>
-                                </Card>
-                            </Col>
-                            <Col lg={6} className="mb-4">
-                                <Card className="border-0 shadow-sm h-100">
-                                    <CardHeader className="bg-white border-0 pt-4">
-                                        <div className="d-flex align-items-center">
-                                            <FiClock size={18} className="text-primary me-2" />
-                                            <h6 className="mb-0">Payment Method Distribution</h6>
-                                        </div>
-                                    </CardHeader>
-                                    <CardBody>
-                                        <div style={{ height: "300px" }}>
-                                            <Pie data={methodPieData} options={pieOptions} />
-                                        </div>
-                                    </CardBody>
-                                </Card>
-                            </Col>
+                            {categories.length > 0 && (
+                                <Col md={6} className="mb-3">
+                                    <Card className="border-0 shadow-sm h-100">
+                                        <CardBody className="p-4">
+                                            <h5 className="mb-3">Category Summary</h5>
+                                            <div className="table-responsive" style={{ maxHeight: "220px", overflowY: "auto" }}>
+                                                <table className="table table-bordered mb-0" style={{ borderColor: "#cbd5e1" }}>
+                                                    <thead className="table-light">
+                                                        <tr>
+                                                            <th style={{ padding: "8px", border: "1px solid #cbd5e1" }}>Category</th>
+                                                            <th style={{ padding: "8px", border: "1px solid #cbd5e1", textAlign: "right" }}>Amount</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {categories.map((cat, idx) => (
+                                                            <tr key={idx}>
+                                                                <td className="text-capitalize" style={{ padding: "8px", border: "1px solid #cbd5e1" }}>{cat.category}</td>
+                                                                <td className="fw-bold text-danger" style={{ padding: "8px", border: "1px solid #cbd5e1", textAlign: "right" }}>{formatCurrency(cat.amount)}</td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </CardBody>
+                                    </Card>
+                                </Col>
+                            )}
                         </Row>
 
                         {/* Search and Details Table */}
@@ -881,31 +602,87 @@ const ExpenseReport = () => {
                                 </div>
                             </CardHeader>
                             <CardBody className="p-0">
-                                <DataTable
-                                    columns={columns}
-                                    data={filteredRows}
-                                    pagination
-                                    responsive
-                                    highlightOnHover
-                                    pointerOnHover
-                                    className="border-0"
-                                    paginationPerPage={10}
-                                    paginationRowsPerPageOptions={[10, 25, 50]}
-                                    customStyles={{
-                                        headRow: {
-                                            style: {
-                                                backgroundColor: "#f8f9fa",
-                                                borderTop: "none",
-                                                fontWeight: 600,
-                                            },
-                                        },
-                                        rows: {
-                                            style: {
-                                                minHeight: "72px",
-                                            },
-                                        },
-                                    }}
-                                />
+                                <div className="table-responsive px-4 pb-4">
+                                    <table className="table table-bordered align-middle mb-0" style={{ borderColor: "#cbd5e1" }}>
+                                        <thead className="table-light">
+                                            <tr style={{ backgroundColor: "#f8f9fa", borderBottom: "2px solid #cbd5e1" }}>
+                                                <th style={{ padding: "12px", color: "#1e293b", fontWeight: 600, border: "1px solid #cbd5e1", width: "70px", textAlign: "center" }}>SQN</th>
+                                                <th style={{ padding: "12px", color: "#1e293b", fontWeight: 600, border: "1px solid #cbd5e1" }}>Expense</th>
+                                                <th style={{ padding: "12px", color: "#1e293b", fontWeight: 600, border: "1px solid #cbd5e1" }}>Category</th>
+                                                <th style={{ padding: "12px", color: "#1e293b", fontWeight: 600, border: "1px solid #cbd5e1" }}>Description</th>
+                                                <th style={{ padding: "12px", color: "#1e293b", fontWeight: 600, border: "1px solid #cbd5e1" }}>Building</th>
+                                                <th style={{ padding: "12px", color: "#1e293b", fontWeight: 600, border: "1px solid #cbd5e1" }}>Amount</th>
+                                                <th style={{ padding: "12px", color: "#1e293b", fontWeight: 600, border: "1px solid #cbd5e1" }}>Payment</th>
+                                                <th style={{ padding: "12px", color: "#1e293b", fontWeight: 600, border: "1px solid #cbd5e1" }}>Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {filteredRows.length > 0 ? (
+                                                filteredRows.map((row, rowIdx) => (
+                                                    <tr key={row._id} style={{ borderBottom: "1px solid #cbd5e1" }}>
+                                                        <td style={{ padding: "12px", border: "1px solid #cbd5e1", textAlign: "center" }}>{rowIdx + 1}</td>
+                                                        <td style={{ padding: "12px", border: "1px solid #cbd5e1" }}>
+                                                            <div className="fw-semibold mb-1">{row.expenseNumber}</div>
+                                                            <small className="text-muted">{formatDate(row.expenseDate)}</small>
+                                                        </td>
+                                                        <td style={{ padding: "12px", border: "1px solid #cbd5e1" }}>
+                                                            <div className="d-flex align-items-center gap-2">
+                                                                 {getCategoryIcon(row.category)}
+                                                                 <span className="fw-semibold text-capitalize">{row.category}</span>
+                                                            </div>
+                                                        </td>
+                                                        <td style={{ padding: "12px", border: "1px solid #cbd5e1" }}>
+                                                            <div>{row.description || "-"}</div>
+                                                            {row.payee?.name && (
+                                                                <small className="text-muted">Payee: {row.payee.name}</small>
+                                                            )}
+                                                        </td>
+                                                        <td style={{ padding: "12px", border: "1px solid #cbd5e1" }}>
+                                                            <div className="fw-semibold">{row.building?.name || "-"}</div>
+                                                            <small className="text-muted">{row.building?.code || "-"}</small>
+                                                        </td>
+                                                        <td style={{ padding: "12px", border: "1px solid #cbd5e1", fontWeight: "bold" }} className="text-danger">
+                                                            {formatCurrency(row.amount)}
+                                                        </td>
+                                                        <td style={{ padding: "12px", border: "1px solid #cbd5e1" }}>
+                                                            <div className="d-flex align-items-center gap-1">
+                                                                {getPaymentMethodIcon(row.payment?.method)}
+                                                                <span className="text-capitalize">{row.payment?.method || "-"}</span>
+                                                            </div>
+                                                            {row.payment?.transactionId && (
+                                                                <small className="text-muted">Ref: {row.payment.transactionId}</small>
+                                                            )}
+                                                        </td>
+                                                        <td style={{ padding: "12px", border: "1px solid #cbd5e1" }}>
+                                                            <Badge
+                                                                color={row.approval?.status === "approved" ? "success" : "warning"}
+                                                                className="d-inline-flex align-items-center gap-1 px-3 py-2"
+                                                            >
+                                                                {row.approval?.status === "approved" ? <FiCheckCircle size={12} /> : <FiClock size={12} />}
+                                                                <span className="ms-1 text-capitalize">{row.approval?.status || "Pending"}</span>
+                                                            </Badge>
+                                                        </td>
+                                                    </tr>
+                                                ))
+                                            ) : (
+                                                <tr>
+                                                    <td colSpan="8" className="text-center p-4 text-muted" style={{ border: "1px solid #cbd5e1" }}>
+                                                        No records found
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </tbody>
+                                        <tfoot style={{ borderTop: "2px solid #64748b" }}>
+                                            <tr style={{ backgroundColor: "#f8f9fa" }}>
+                                                <td colSpan="5" className="text-end fw-bold" style={{ padding: "12px", border: "1px solid #cbd5e1" }}>Total:</td>
+                                                <td className="fw-bold text-danger" style={{ padding: "12px", border: "1px solid #cbd5e1" }}>
+                                                    {formatCurrency(filteredRows.reduce((sum, row) => sum + (row.amount || 0), 0))}
+                                                </td>
+                                                <td colSpan="2" style={{ border: "1px solid #cbd5e1" }}></td>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+                                </div>
                             </CardBody>
                         </Card>
                     </>

@@ -170,6 +170,8 @@ export const FinanceAPI = {
   approveExpense: (id, payload) => api.post(`${url.FINANCE}/expenses/${id}/approve`, payload),
   reportSummary: (payload) => api.post(`${url.FINANCE}/reports/summary`, payload),
   reportDetails: (payload) => api.post(`${url.FINANCE}/reports/details`, payload),
+  createRefund: (payload) => api.post(`${url.FINANCE}/deposit-refunds`, payload),
+  listRefunds: (params) => api.get(`${url.FINANCE}/deposit-refunds`, params),
 };
 
 export const ReportsAPI = {

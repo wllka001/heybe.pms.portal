@@ -46,7 +46,7 @@ const unitStatusBadges = {
 };
 
 const Buildings = () => {
-    document.title = "Buildings | Apartment Management";
+    document.title = "Buildings | Degaanly";
 
     const dispatch = useDispatch();
     const userAuth = useAuthUser();

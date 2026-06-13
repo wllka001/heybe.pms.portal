@@ -173,7 +173,7 @@ const UtilityDetailCard = ({ utility, type, onClose }) => {
 };
 
 const UtilityBills = () => {
-  document.title = "Finance - Utility Bills | Apartment Management";
+  document.title = "Finance - Utility Bills | Degaanly";
 
   const dispatch = useDispatch();
   const leaseSelector = createSelector((state) => state.Leases, (s) => s.leases || []);
@@ -1083,7 +1083,7 @@ export default UtilityBills;
 // });
 
 // const UtilityBills = () => {
-//   document.title = "Finance - Utility Bills | Apartment Management";
+//   document.title = "Finance - Utility Bills | Degaanly";
 
 //   const dispatch = useDispatch();
 //   const leaseSelector = createSelector((state) => state.Leases, (s) => s.leases || []);

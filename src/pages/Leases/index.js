@@ -51,7 +51,7 @@ const leaseStatusOptions = [
 ];
 
 const Leases = () => {
-  document.title = "Leases | Apartment Management";
+  document.title = "Leases | Degaanly";
   const dispatch = useDispatch();
 
   const leaseSelector = createSelector(
@@ -168,8 +168,8 @@ const Leases = () => {
           return !activeLeaseReferences.tenantIds.has(tenantId);
         })
         .map((t) => ({
-        value: t._id,
-        label: `${t.personalInfo?.firstName || ""} ${t.personalInfo?.lastName || ""} (${t.tenantCode})`,
+          value: t._id,
+          label: `${t.personalInfo?.firstName || ""} ${t.personalInfo?.lastName || ""} (${t.tenantCode})`,
         })),
     [activeLeaseReferences.tenantIds, selectedLease?.tenantId, tenants],
   );
@@ -274,9 +274,9 @@ const Leases = () => {
     const selectedBuildingId = formik.values.buildingId;
     const filtered = selectedBuildingId
       ? units.filter((u) => {
-          const value = typeof u.buildingId === "object" ? u.buildingId?._id : u.buildingId;
-          return value === selectedBuildingId;
-        })
+        const value = typeof u.buildingId === "object" ? u.buildingId?._id : u.buildingId;
+        return value === selectedBuildingId;
+      })
       : units;
 
     return filtered

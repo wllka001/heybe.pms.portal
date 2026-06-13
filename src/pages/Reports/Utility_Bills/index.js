@@ -30,36 +30,11 @@ import {
     FiPieChart,
     FiActivity,
 } from "react-icons/fi";
-import {
-    Chart as ChartJS,
-    CategoryScale,
-    LinearScale,
-    BarElement,
-    Title,
-    Tooltip,
-    Legend,
-    ArcElement,
-    PointElement,
-    LineElement,
-} from "chart.js";
-import { Bar, Pie, Line } from "react-chartjs-2";
 import BreadCrumb from "../../../Components/Common/BreadCrumb";
 import { ReportsAPI } from "../../../helpers/backend_helper";
 import { getBuildings as onGetBuildings, getLeases as onGetLeases } from "../../../slices/thunks";
 import { useDispatch, useSelector } from "react-redux";
 import { createSelector } from "reselect";
-
-ChartJS.register(
-    CategoryScale,
-    LinearScale,
-    BarElement,
-    Title,
-    Tooltip,
-    Legend,
-    ArcElement,
-    PointElement,
-    LineElement
-);
 
 const selectStyles = {
     control: (base) => ({
@@ -129,7 +104,7 @@ const UtilityTypeCard = ({ type, amount, count, color, icon: Icon }) => (
 );
 
 const UtilityBillsReport = () => {
-    document.title = "Utility Bills Report | Apartment Management";
+    document.title = "Utility Bills Report | Degaanly";
     const dispatch = useDispatch();
 
     const buildingsSelector = createSelector((state) => state.Buildings, (s) => s.buildings || []);
@@ -218,177 +193,17 @@ const UtilityBillsReport = () => {
         if (!reportData?.details) return null;
 
         const utilityTotals = {};
-        const consumptionByUtility = {};
-        const billingStatus = { billed: 0, unbilled: 0 };
 
         reportData.details.forEach((bill) => {
             const type = bill.utilityTypeName || bill.utilityType;
             utilityTotals[type] = (utilityTotals[type] || 0) + (bill.totalAmount || 0);
-            consumptionByUtility[type] = (consumptionByUtility[type] || 0) + (bill.consumption || 0);
-            if (bill.isBilled) {
-                billingStatus.billed += bill.totalAmount || 0;
-            } else {
-                billingStatus.unbilled += bill.totalAmount || 0;
-            }
         });
 
         return {
             utilityTotals,
-            consumptionByUtility,
-            billingStatus,
             utilityTypes: Object.keys(utilityTotals),
         };
     }, [reportData]);
-
-    // Bar Chart Data
-    const barChartData = {
-        labels: chartData?.utilityTypes || [],
-        datasets: [
-            {
-                label: "Total Amount ($)",
-                data: chartData?.utilityTypes.map((type) => chartData.utilityTotals[type]) || [],
-                backgroundColor: "rgba(59, 130, 246, 0.8)",
-                borderRadius: 8,
-            },
-        ],
-    };
-
-    // Pie Chart Data
-    const pieChartData = {
-        labels: chartData?.utilityTypes || [],
-        datasets: [
-            {
-                data: chartData?.utilityTypes.map((type) => chartData.utilityTotals[type]) || [],
-                backgroundColor: ["#3b82f6", "#f59e0b", "#10b981", "#ef4444", "#8b5cf6"],
-                borderWidth: 0,
-            },
-        ],
-    };
-
-    // Consumption Line Chart
-    const lineChartData = {
-        labels: chartData?.utilityTypes || [],
-        datasets: [
-            {
-                label: "Consumption (Units)",
-                data: chartData?.utilityTypes.map((type) => chartData.consumptionByUtility[type]) || [],
-                borderColor: "#10b981",
-                backgroundColor: "rgba(16, 185, 129, 0.1)",
-                fill: true,
-                tension: 0.4,
-                pointRadius: 6,
-                pointBackgroundColor: "#10b981",
-            },
-        ],
-    };
-
-    const chartOptions = {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-            legend: {
-                position: "top",
-                labels: {
-                    usePointStyle: true,
-                    boxWidth: 10,
-                },
-            },
-            tooltip: {
-                callbacks: {
-                    label: (context) => {
-                        let label = context.dataset.label || "";
-                        if (label) label += ": ";
-                        if (context.parsed.y !== undefined) {
-                            label += formatCurrency(context.parsed.y);
-                        } else {
-                            label += formatCurrency(context.parsed);
-                        }
-                        return label;
-                    },
-                },
-            },
-        },
-    };
-
-    const pieOptions = {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-            legend: {
-                position: "bottom",
-                labels: {
-                    usePointStyle: true,
-                },
-            },
-            tooltip: {
-                callbacks: {
-                    label: (context) => {
-                        const value = context.raw;
-                        const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                        const percentage = ((value / total) * 100).toFixed(1);
-                        return `${context.label}: ${formatCurrency(value)} (${percentage}%)`;
-                    },
-                },
-            },
-        },
-    };
-
-    const columns = [
-        {
-            name: "Utility",
-            cell: (row) => (
-                <div className="d-flex align-items-center gap-2">
-                    {getUtilityIcon(row.utilityType)}
-                    <span className="fw-semibold">{row.utilityTypeName || row.utilityType}</span>
-                </div>
-            ),
-        },
-        {
-            name: "Unit/Tenant",
-            cell: (row) => (
-                <div>
-                    <div className="fw-semibold">Unit {row.unit?.unitNumber || "-"}</div>
-                    <small className="text-muted">{row.tenant?.fullName || "-"}</small>
-                </div>
-            ),
-        },
-        {
-            name: "Consumption",
-            cell: (row) => (
-                <div className="text-center">
-                    <div className="fw-semibold">{row.consumption || 0}</div>
-                    <small className="text-muted">units</small>
-                </div>
-            ),
-        },
-        {
-            name: "Rate",
-            cell: (row) => formatCurrency(row.ratePerUnit || row.fixedAmount),
-        },
-        {
-            name: "Amount",
-            cell: (row) => <span className="fw-bold text-success">{formatCurrency(row.totalAmount)}</span>,
-        },
-        {
-            name: "Status",
-            cell: (row) => (
-                <Badge color={row.isBilled ? "success" : "warning"} className="px-3 py-1">
-                    {row.isBilled ? "Billed" : "Pending"}
-                </Badge>
-            ),
-        },
-        {
-            name: "Reading Date",
-            cell: (row) => (
-                <div>
-                    <small className="text-muted">{formatDate(row.readings?.current?.date)}</small>
-                    {row.readings?.current?.notes && (
-                        <div className="small text-muted">{row.readings.current.notes}</div>
-                    )}
-                </div>
-            ),
-        },
-    ];
 
     const filteredRows = useMemo(() => {
         if (!reportData?.details) return [];
@@ -400,7 +215,8 @@ const UtilityBillsReport = () => {
     }, [reportData, searchText]);
 
     const exportRows = useMemo(() => {
-        return filteredRows.map((row) => ({
+        return filteredRows.map((row, idx) => ({
+            "SQN": idx + 1,
             "Utility Type": row.utilityTypeName || row.utilityType,
             "Unit Number": row.unit?.unitNumber || "-",
             Tenant: row.tenant?.fullName || "-",
@@ -422,40 +238,82 @@ const UtilityBillsReport = () => {
         if (!printWindow) return;
 
         const summaryHtml = `
-      <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 30px;">
-        ${Object.entries(reportData?.summary || {}).map(([key, value]) => `
-          <div style="background: #f8f9fa; padding: 20px; border-radius: 12px; text-align: center;">
-            <div style="color: #6c757d; font-size: 12px; margin-bottom: 8px;">${key.replace(/([A-Z])/g, " $1").trim()}</div>
-            <div style="font-size: 24px; font-weight: bold; color: #3b82f6;">${typeof value === "number" ? formatCurrency(value) : value}</div>
-          </div>
-        `).join("")}
+      <div style="display: flex; gap: 20px; margin-bottom: 30px; flex-wrap: wrap;">
+        <div style="flex: 1; min-width: 300px;">
+          <h3 style="font-size: 16px; margin-bottom: 12px; color: #0f172a; border-bottom: 2px solid #cbd5e1; padding-bottom: 6px;">Utility Summary</h3>
+          <table style="width: 100%; border-collapse: collapse; border: 1px solid #cbd5e1;">
+            <tbody>
+              <tr>
+                <td style="padding: 8px; border: 1px solid #cbd5e1; color: #64748b;">Total Amount</td>
+                <td style="padding: 8px; border: 1px solid #cbd5e1; text-align: right; font-weight: bold; color: #3b82f6;">${formatCurrency(reportData?.summary?.grandTotal || 0)}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px; border: 1px solid #cbd5e1; color: #64748b;">Total Consumption</td>
+                <td style="padding: 8px; border: 1px solid #cbd5e1; text-align: right; font-weight: bold; color: #0ea5e9;">${reportData?.summary?.totalConsumption || 0} units</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px; border: 1px solid #cbd5e1; color: #64748b;">Total Tax</td>
+                <td style="padding: 8px; border: 1px solid #cbd5e1; text-align: right; font-weight: bold; color: #eab308;">${formatCurrency(reportData?.summary?.totalTaxAmount || 0)}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px; border: 1px solid #cbd5e1; color: #64748b;">Total Bills</td>
+                <td style="padding: 8px; border: 1px solid #cbd5e1; text-align: right; font-weight: bold;">${reportData?.summary?.billedCount || 0} / ${reportData?.summary?.totalBills || 0} Billed</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div style="flex: 1; min-width: 300px;">
+          <h3 style="font-size: 16px; margin-bottom: 12px; color: #0f172a; border-bottom: 2px solid #cbd5e1; padding-bottom: 6px;">Utility Type Breakdown</h3>
+          <table style="width: 100%; border-collapse: collapse; border: 1px solid #cbd5e1;">
+            <thead>
+              <tr style="background: #f8f9fa;">
+                <th style="padding: 8px; border: 1px solid #cbd5e1; text-align: left;">Type</th>
+                <th style="padding: 8px; border: 1px solid #cbd5e1; text-align: center;">Bills</th>
+                <th style="padding: 8px; border: 1px solid #cbd5e1; text-align: right;">Total Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${chartData?.utilityTypes.map((type) => `
+                <tr>
+                  <td style="padding: 8px; border: 1px solid #cbd5e1; font-weight: 600;">${type}</td>
+                  <td style="padding: 8px; border: 1px solid #cbd5e1; text-align: center;">${reportData.details?.filter(b => b.utilityTypeName === type).length || 0}</td>
+                  <td style="padding: 8px; border: 1px solid #cbd5e1; text-align: right; font-weight: bold; color: #10b981;">${formatCurrency(chartData.utilityTotals[type] || 0)}</td>
+                </tr>
+              `).join("")}
+            </tbody>
+          </table>
+        </div>
       </div>
     `;
-
+ 
+        const totalConsumption = filteredRows.reduce((sum, row) => sum + (row.consumption || 0), 0);
+        const totalAmount = filteredRows.reduce((sum, row) => sum + (row.totalAmount || 0), 0);
         const tableHtml = `
-      <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
+      <table style="width: 100%; border-collapse: collapse; margin-top: 20px; border: 1px solid #cbd5e1;">
         <thead>
-          <tr style="background: #f8f9fa; border-bottom: 2px solid #e2e8f0;">
-            <th style="padding: 12px; text-align: left;">Utility</th>
-            <th style="padding: 12px; text-align: left;">Unit/Tenant</th>
-            <th style="padding: 12px; text-align: center;">Consumption</th>
-            <th style="padding: 12px; text-align: right;">Rate</th>
-            <th style="padding: 12px; text-align: right;">Amount</th>
-            <th style="padding: 12px; text-align: center;">Status</th>
+          <tr style="background: #f8f9fa; border-bottom: 2px solid #cbd5e1;">
+            <th style="padding: 12px; text-align: center; border: 1px solid #cbd5e1; width: 60px;">SQN</th>
+            <th style="padding: 12px; text-align: left; border: 1px solid #cbd5e1;">Utility</th>
+            <th style="padding: 12px; text-align: left; border: 1px solid #cbd5e1;">Unit/Tenant</th>
+            <th style="padding: 12px; text-align: center; border: 1px solid #cbd5e1;">Consumption</th>
+            <th style="padding: 12px; text-align: right; border: 1px solid #cbd5e1;">Rate</th>
+            <th style="padding: 12px; text-align: right; border: 1px solid #cbd5e1;">Amount</th>
+            <th style="padding: 12px; text-align: center; border: 1px solid #cbd5e1;">Status</th>
           </tr>
         </thead>
         <tbody>
-          ${filteredRows.map((row) => `
-            <tr style="border-bottom: 1px solid #e2e8f0;">
-              <td style="padding: 12px;">${row.utilityTypeName || row.utilityType}</td>
-              <td style="padding: 12px;">
+          ${filteredRows.map((row, idx) => `
+            <tr style="border-bottom: 1px solid #cbd5e1;">
+              <td style="padding: 12px; text-align: center; border: 1px solid #cbd5e1;">${idx + 1}</td>
+              <td style="padding: 12px; border: 1px solid #cbd5e1;">${row.utilityTypeName || row.utilityType}</td>
+              <td style="padding: 12px; border: 1px solid #cbd5e1;">
                 Unit ${row.unit?.unitNumber || "-"}<br/>
                 <small>${row.tenant?.fullName || "-"}</small>
               </td>
-              <td style="padding: 12px; text-align: center;">${row.consumption || 0}</td>
-              <td style="padding: 12px; text-align: right;">${formatCurrency(row.ratePerUnit || row.fixedAmount)}</td>
-              <td style="padding: 12px; text-align: right; font-weight: bold;">${formatCurrency(row.totalAmount)}</td>
-              <td style="padding: 12px; text-align: center;">
+              <td style="padding: 12px; text-align: center; border: 1px solid #cbd5e1;">${row.consumption || 0}</td>
+              <td style="padding: 12px; text-align: right; border: 1px solid #cbd5e1;">${formatCurrency(row.ratePerUnit || row.fixedAmount)}</td>
+              <td style="padding: 12px; text-align: right; font-weight: bold; border: 1px solid #cbd5e1; color: #10b981;">${formatCurrency(row.totalAmount)}</td>
+              <td style="padding: 12px; text-align: center; border: 1px solid #cbd5e1;">
                 <span style="background: ${row.isBilled ? "#d4edda" : "#fff3cd"}; padding: 4px 8px; border-radius: 4px;">
                   ${row.isBilled ? "Billed" : "Pending"}
                 </span>
@@ -463,6 +321,15 @@ const UtilityBillsReport = () => {
             </tr>
           `).join("")}
         </tbody>
+        <tfoot>
+          <tr style="background: #f8f9fa; font-weight: bold; border-top: 2px solid #64748b;">
+            <td colspan="3" style="padding: 12px; text-align: right; border: 1px solid #cbd5e1;">Total:</td>
+            <td style="padding: 12px; text-align: center; border: 1px solid #cbd5e1;">${totalConsumption} units</td>
+            <td style="border: 1px solid #cbd5e1;"></td>
+            <td style="padding: 12px; text-align: right; border: 1px solid #cbd5e1; color: #10b981;">${formatCurrency(totalAmount)}</td>
+            <td style="border: 1px solid #cbd5e1;"></td>
+          </tr>
+        </tfoot>
       </table>
     `;
 
@@ -487,7 +354,7 @@ const UtilityBillsReport = () => {
             .header {
               margin-bottom: 30px;
               padding-bottom: 20px;
-              border-bottom: 2px solid #e2e8f0;
+              border-bottom: 2px solid #cbd5e1;
             }
             .date {
               color: #64748b;
@@ -512,7 +379,7 @@ const UtilityBillsReport = () => {
           ${summaryHtml}
           ${tableHtml}
           <div style="margin-top: 30px; text-align: center; color: #64748b; font-size: 12px;">
-            Generated by Apartment Management System
+            Generated by Degaanly System
           </div>
         </body>
       </html>
@@ -634,109 +501,64 @@ const UtilityBillsReport = () => {
                     </Card>
                 ) : reportData ? (
                     <>
-                        {/* Summary Stats Cards */}
+                        {/* Summary Tables */}
                         <Row className="mb-4">
-                            <Col lg={6} md={6} className="mb-3">
-                                <StatCard
-                                    icon={FiDollarSign}
-                                    title="Total Amount"
-                                    value={formatCurrency(reportData.summary?.grandTotal || 0)}
-                                    color="primary"
-                                    subtitle={`${reportData.summary?.billedCount || 0} bills billed`}
-                                />
-                            </Col>
-                            {/* <Col lg={3} md={6} className="mb-3">
-                                <StatCard
-                                    icon={FiTrendingUp}
-                                    title="Total Consumption"
-                                    value={`${reportData.summary?.totalConsumption || 0} units`}
-                                    color="info"
-                                    subtitle={`${reportData.summary?.totalBills || 0} total bills`}
-                                />
-                            </Col>
-                            <Col lg={3} md={6} className="mb-3">
-                                <StatCard
-                                    icon={FiZap}
-                                    title="Total Tax"
-                                    value={formatCurrency(reportData.summary?.totalTaxAmount || 0)}
-                                    color="warning"
-                                    subtitle="Tax collected"
-                                />
-                            </Col> */}
-                            <Col lg={6} md={6} className="mb-3">
-                                <StatCard
-                                    icon={FiActivity}
-                                    title="Billing Rate"
-                                    value={`${((reportData.summary?.billedCount || 0) / (reportData.summary?.totalBills || 1) * 100).toFixed(1)}%`}
-                                    color="success"
-                                    subtitle="Billed vs Total"
-                                />
-                            </Col>
-                        </Row>
-
-                        {/* Charts Row */}
-                        <Row className="mb-4">
-                            <Col lg={6} className="mb-4">
+                            <Col md={6} className="mb-3">
                                 <Card className="border-0 shadow-sm h-100">
-                                    <CardHeader className="bg-white border-0 pt-4">
-                                        <div className="d-flex align-items-center">
-                                            <FiPieChart size={18} className="text-primary me-2" />
-                                            <h6 className="mb-0">Utility Cost Distribution</h6>
-                                        </div>
-                                    </CardHeader>
-                                    <CardBody>
-                                        <div style={{ height: "300px" }}>
-                                            <Pie data={pieChartData} options={pieOptions} />
+                                    <CardBody className="p-4">
+                                        <h5 className="mb-3">Utility Summary</h5>
+                                        <div className="table-responsive">
+                                            <table className="table table-bordered mb-0" style={{ borderColor: "#cbd5e1" }}>
+                                                <tbody>
+                                                    <tr>
+                                                        <td className="text-muted" style={{ padding: "8px", border: "1px solid #cbd5e1" }}>Total Amount</td>
+                                                        <td className="fw-bold text-primary" style={{ padding: "8px", border: "1px solid #cbd5e1", textAlign: "right" }}>{formatCurrency(reportData.summary?.grandTotal || 0)}</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td className="text-muted" style={{ padding: "8px", border: "1px solid #cbd5e1" }}>Total Consumption</td>
+                                                        <td className="fw-bold text-info" style={{ padding: "8px", border: "1px solid #cbd5e1", textAlign: "right" }}>{`${reportData.summary?.totalConsumption || 0} units`}</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td className="text-muted" style={{ padding: "8px", border: "1px solid #cbd5e1" }}>Total Tax</td>
+                                                        <td className="fw-bold text-warning" style={{ padding: "8px", border: "1px solid #cbd5e1", textAlign: "right" }}>{formatCurrency(reportData.summary?.totalTaxAmount || 0)}</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td className="text-muted" style={{ padding: "8px", border: "1px solid #cbd5e1" }}>Total Bills</td>
+                                                        <td className="fw-bold text-dark" style={{ padding: "8px", border: "1px solid #cbd5e1", textAlign: "right" }}>{`${reportData.summary?.billedCount || 0} / ${reportData.summary?.totalBills || 0} Billed`}</td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
                                         </div>
                                     </CardBody>
                                 </Card>
                             </Col>
-                            <Col lg={6} className="mb-4">
+                            <Col md={6} className="mb-3">
                                 <Card className="border-0 shadow-sm h-100">
-                                    <CardHeader className="bg-white border-0 pt-4">
-                                        <div className="d-flex align-items-center">
-                                            <FiTrendingUp size={18} className="text-primary me-2" />
-                                            <h6 className="mb-0">Consumption by Utility Type</h6>
-                                        </div>
-                                    </CardHeader>
-                                    <CardBody>
-                                        <div style={{ height: "300px" }}>
-                                            <Line data={lineChartData} options={chartOptions} />
+                                    <CardBody className="p-4">
+                                        <h5 className="mb-3">Utility Type Breakdown</h5>
+                                        <div className="table-responsive">
+                                            <table className="table table-bordered mb-0" style={{ borderColor: "#cbd5e1" }}>
+                                                <thead>
+                                                    <tr style={{ backgroundColor: "#f8f9fa" }}>
+                                                        <th style={{ padding: "8px", border: "1px solid #cbd5e1" }}>Type</th>
+                                                        <th style={{ padding: "8px", border: "1px solid #cbd5e1", textAlign: "center" }}>Bills</th>
+                                                        <th style={{ padding: "8px", border: "1px solid #cbd5e1", textAlign: "right" }}>Total Amount</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {chartData?.utilityTypes.map((type) => (
+                                                        <tr key={type}>
+                                                            <td style={{ padding: "8px", border: "1px solid #cbd5e1" }} className="fw-semibold">{type}</td>
+                                                            <td style={{ padding: "8px", border: "1px solid #cbd5e1", textAlign: "center" }}>{reportData.details?.filter(b => b.utilityTypeName === type).length || 0}</td>
+                                                            <td style={{ padding: "8px", border: "1px solid #cbd5e1", textAlign: "right" }} className="fw-bold text-success">{formatCurrency(chartData.utilityTotals[type] || 0)}</td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
                                         </div>
                                     </CardBody>
                                 </Card>
                             </Col>
-                        </Row>
-
-                        {/* Utility Type Breakdown */}
-                        <Row className="mb-4">
-                            {chartData?.utilityTypes.map((type, idx) => {
-                                const icons = {
-                                    Water: FiDroplet,
-                                    Electric: FiZap,
-                                    Trash: FiTrash2,
-                                    Gas: FiActivity,
-                                };
-                                const colors = {
-                                    Water: "info",
-                                    Electric: "warning",
-                                    Trash: "success",
-                                    Gas: "danger",
-                                };
-                                const Icon = icons[type] || FiTrendingUp;
-                                const color = colors[type] || "primary";
-                                return (
-                                    <Col lg={3} md={6} key={type}>
-                                        <UtilityTypeCard
-                                            type={type}
-                                            amount={chartData.utilityTotals[type]}
-                                            count={reportData.details?.filter(b => b.utilityTypeName === type).length || 0}
-                                            color={color}
-                                            icon={Icon}
-                                        />
-                                    </Col>
-                                );
-                            })}
                         </Row>
 
                         {/* Search and Details Table */}
@@ -756,31 +578,83 @@ const UtilityBillsReport = () => {
                                 </div>
                             </CardHeader>
                             <CardBody className="p-0">
-                                <DataTable
-                                    columns={columns}
-                                    data={filteredRows}
-                                    pagination
-                                    responsive
-                                    highlightOnHover
-                                    pointerOnHover
-                                    className="border-0"
-                                    paginationPerPage={10}
-                                    paginationRowsPerPageOptions={[10, 25, 50]}
-                                    customStyles={{
-                                        headRow: {
-                                            style: {
-                                                backgroundColor: "#f8f9fa",
-                                                borderTop: "none",
-                                                fontWeight: 600,
-                                            },
-                                        },
-                                        rows: {
-                                            style: {
-                                                minHeight: "72px",
-                                            },
-                                        },
-                                    }}
-                                />
+                                <div className="table-responsive px-4 pb-4">
+                                    <table className="table table-bordered align-middle mb-0" style={{ borderColor: "#cbd5e1" }}>
+                                        <thead className="table-light">
+                                            <tr style={{ backgroundColor: "#f8f9fa", borderBottom: "2px solid #cbd5e1" }}>
+                                                <th style={{ padding: "12px", color: "#1e293b", fontWeight: 600, border: "1px solid #cbd5e1", width: "70px", textAlign: "center" }}>SQN</th>
+                                                <th style={{ padding: "12px", color: "#1e293b", fontWeight: 600, border: "1px solid #cbd5e1" }}>Utility</th>
+                                                <th style={{ padding: "12px", color: "#1e293b", fontWeight: 600, border: "1px solid #cbd5e1" }}>Unit/Tenant</th>
+                                                <th style={{ padding: "12px", color: "#1e293b", fontWeight: 600, border: "1px solid #cbd5e1" }}>Consumption</th>
+                                                <th style={{ padding: "12px", color: "#1e293b", fontWeight: 600, border: "1px solid #cbd5e1" }}>Rate</th>
+                                                <th style={{ padding: "12px", color: "#1e293b", fontWeight: 600, border: "1px solid #cbd5e1" }}>Amount</th>
+                                                <th style={{ padding: "12px", color: "#1e293b", fontWeight: 600, border: "1px solid #cbd5e1" }}>Status</th>
+                                                <th style={{ padding: "12px", color: "#1e293b", fontWeight: 600, border: "1px solid #cbd5e1" }}>Reading Date</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {filteredRows.length > 0 ? (
+                                                filteredRows.map((row, idx) => (
+                                                    <tr key={row._id} style={{ borderBottom: "1px solid #cbd5e1" }}>
+                                                        <td style={{ padding: "12px", border: "1px solid #cbd5e1", textAlign: "center" }}>{idx + 1}</td>
+                                                        <td style={{ padding: "12px", border: "1px solid #cbd5e1" }}>
+                                                            <div className="d-flex align-items-center gap-2">
+                                                                {getUtilityIcon(row.utilityType)}
+                                                                <span className="fw-semibold">{row.utilityTypeName || row.utilityType}</span>
+                                                            </div>
+                                                        </td>
+                                                        <td style={{ padding: "12px", border: "1px solid #cbd5e1" }}>
+                                                            <div>
+                                                                <div className="fw-semibold">Unit {row.unit?.unitNumber || "-"}</div>
+                                                                <small className="text-muted">{row.tenant?.fullName || "-"}</small>
+                                                            </div>
+                                                        </td>
+                                                        <td style={{ padding: "12px", border: "1px solid #cbd5e1", textAlign: "center" }}>
+                                                            <div className="fw-semibold">{row.consumption || 0}</div>
+                                                            <small className="text-muted">units</small>
+                                                        </td>
+                                                        <td style={{ padding: "12px", border: "1px solid #cbd5e1" }}>
+                                                            {formatCurrency(row.ratePerUnit || row.fixedAmount)}
+                                                        </td>
+                                                        <td style={{ padding: "12px", border: "1px solid #cbd5e1", fontWeight: "bold" }} className="text-success">
+                                                            {formatCurrency(row.totalAmount)}
+                                                        </td>
+                                                        <td style={{ padding: "12px", border: "1px solid #cbd5e1" }}>
+                                                            <Badge color={row.isBilled ? "success" : "warning"} className="px-3 py-1">
+                                                                {row.isBilled ? "Billed" : "Pending"}
+                                                            </Badge>
+                                                        </td>
+                                                        <td style={{ padding: "12px", border: "1px solid #cbd5e1" }}>
+                                                            <small className="text-muted">{formatDate(row.readings?.current?.date)}</small>
+                                                            {row.readings?.current?.notes && (
+                                                                <div className="small text-muted">{row.readings.current.notes}</div>
+                                                            )}
+                                                        </td>
+                                                    </tr>
+                                                ))
+                                            ) : (
+                                                <tr>
+                                                    <td colSpan="8" className="text-center p-4 text-muted" style={{ border: "1px solid #cbd5e1" }}>
+                                                        No records found
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </tbody>
+                                        <tfoot style={{ borderTop: "2px solid #64748b" }}>
+                                            <tr style={{ backgroundColor: "#f8f9fa" }}>
+                                                <td colSpan="3" className="text-end fw-bold" style={{ padding: "12px", border: "1px solid #cbd5e1" }}>Total:</td>
+                                                <td className="fw-bold text-center" style={{ padding: "12px", border: "1px solid #cbd5e1" }}>
+                                                    {filteredRows.reduce((sum, row) => sum + (row.consumption || 0), 0)} units
+                                                </td>
+                                                <td style={{ border: "1px solid #cbd5e1" }}></td>
+                                                <td className="fw-bold text-success" style={{ padding: "12px", border: "1px solid #cbd5e1" }}>
+                                                    {formatCurrency(filteredRows.reduce((sum, row) => sum + (row.totalAmount || 0), 0))}
+                                                </td>
+                                                <td colSpan="2" style={{ border: "1px solid #cbd5e1" }}></td>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+                                </div>
                             </CardBody>
                         </Card>
                     </>
