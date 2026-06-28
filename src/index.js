@@ -1,13 +1,24 @@
-import React from 'react';
-import ReactDOM from 'react-dom/client';
-import App from './App';
-import reportWebVitals from './reportWebVitals';
-import { BrowserRouter } from "react-router-dom";
-import { Provider } from "react-redux";
-import { configureStore } from "@reduxjs/toolkit";
-import rootReducer from "./slices";
+// Suppress ResizeObserver loop errors globally at the very top
+const suppressResizeObserverError = (e) => {
+  const msg = e.message || (e.reason && e.reason.message) || "";
+  if (msg.includes("ResizeObserver") || (e.error && e.error.message && e.error.message.includes("ResizeObserver"))) {
+    e.stopImmediatePropagation();
+    e.preventDefault();
+  }
+};
+window.addEventListener("error", suppressResizeObserverError, true);
+window.addEventListener("unhandledrejection", suppressResizeObserverError, true);
 
-// Suppress ResizeObserver loop errors globally
+const originalOnError = window.onerror;
+window.onerror = function (message, source, lineno, colno, error) {
+  if (message && String(message).includes("ResizeObserver")) {
+    return true;
+  }
+  if (originalOnError) {
+    return originalOnError.apply(this, arguments);
+  }
+};
+
 const OriginalResizeObserver = window.ResizeObserver;
 if (OriginalResizeObserver) {
   window.ResizeObserver = class ResizeObserver extends OriginalResizeObserver {
@@ -25,16 +36,14 @@ if (OriginalResizeObserver) {
   };
 }
 
-// Global window error fallback handler
-const suppressResizeObserverError = (e) => {
-  const msg = e.message || (e.reason && e.reason.message) || "";
-  if (msg.includes("ResizeObserver")) {
-    e.stopImmediatePropagation();
-    e.preventDefault();
-  }
-};
-window.addEventListener("error", suppressResizeObserverError);
-window.addEventListener("unhandledrejection", suppressResizeObserverError);
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import App from './App';
+import reportWebVitals from './reportWebVitals';
+import { BrowserRouter } from "react-router-dom";
+import { Provider } from "react-redux";
+import { configureStore } from "@reduxjs/toolkit";
+import rootReducer from "./slices";
 
 const store = configureStore({ reducer: rootReducer, devTools: true });
 

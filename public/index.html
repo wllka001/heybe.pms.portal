@@ -2,6 +2,30 @@
 <html lang="en">
 
 <head>
+  <script>
+    // Suppress ResizeObserver loop limit errors globally before React/Webpack bundles load
+    (function() {
+      var suppressResizeObserverError = function(e) {
+        var msg = e.message || (e.reason && e.reason.message) || "";
+        if (msg.indexOf("ResizeObserver") >= 0 || (e.error && e.error.message && e.error.message.indexOf("ResizeObserver") >= 0)) {
+          e.stopImmediatePropagation();
+          e.preventDefault();
+        }
+      };
+      window.addEventListener("error", suppressResizeObserverError, true);
+      window.addEventListener("unhandledrejection", suppressResizeObserverError, true);
+
+      var originalOnError = window.onerror;
+      window.onerror = function (message, source, lineno, colno, error) {
+        if (message && String(message).indexOf("ResizeObserver") >= 0) {
+          return true;
+        }
+        if (originalOnError) {
+          return originalOnError.apply(this, arguments);
+        }
+      };
+    })();
+  </script>
   <meta charset="utf-8" />
   <link rel="icon" href="%PUBLIC_URL%/heybe-logo.png" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />

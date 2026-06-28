@@ -206,6 +206,9 @@ export const downloadInvoicePdf = async ({ invoice, lease, buildingLabel, organi
   doc.text(`DATE ISSUED: ${issueDate}`, 190, y + 7, { align: "right" });
   doc.setFont("helvetica", "normal");
   doc.text(`Name: ${tenantName}`, 20, y + 13);
+  if (lease?.buildingId?.accountNumber) {
+    doc.text(`ACC NO: *789*${lease.buildingId.accountNumber}*$#`, 190, y + 13, { align: "right" });
+  }
 
   y = 89;
   doc.setFillColor(238, 238, 238);
@@ -285,12 +288,26 @@ export const downloadInvoicePdf = async ({ invoice, lease, buildingLabel, organi
     y += rowHeight;
   });
 
-  const previousBalance = Number(invoice?.previousBalance || 0);
-  const finalTotal = Number(invoice?.summary?.totalAmount || 0) + previousBalance;
+  const paidAmount = Number(invoice?.paidAmount || 0);
+  const unpaidDeposit = lease?.terms?.depositPaid ? 0 : Number(lease?.terms?.securityDeposit || 0);
+  const unpaidBeginningBalance = Number(lease?.tenantId?.beginningBalance || 0);
+  const unpaidInvoices = Math.max(0, Number(invoice?.previousBalance || 0) - unpaidBeginningBalance);
+
+  const totalPreviousBalance = Number(invoice?.previousBalance || 0) + unpaidDeposit;
+  const finalBalance = Number(invoice?.summary?.totalAmount || 0) + totalPreviousBalance - paidAmount;
+
+  const parts = [];
+  if (unpaidDeposit > 0) parts.push("deposit");
+  if (unpaidBeginningBalance > 0) parts.push("beginning balance");
+  if (unpaidInvoices > 0) parts.push("unpaid invoices");
+
+  const label = parts.length > 0
+    ? `PREVIOUS BALANCE (${parts.join(" + ")}) :`
+    : "PREVIOUS BALANCE :";
 
   y += 10;
   doc.setFillColor(...BRAND.light);
-  doc.rect(14, y, 182, 45, "F");
+  doc.rect(14, y, 182, 54, "F");
   doc.setTextColor(...BRAND.secondary);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(10);
@@ -302,13 +319,19 @@ export const downloadInvoicePdf = async ({ invoice, lease, buildingLabel, organi
   doc.text(currency(invoice?.summary?.taxTotal || 0), 150, y + 21, { align: "right" });
   doc.text("TOTAL :", 110, y + 28, { align: "right" });
   doc.text(currency(invoice?.summary?.totalAmount || 0), 150, y + 28, { align: "right" });
-  doc.text("PREVIOUS BALANCE :", 110, y + 35, { align: "right" });
-  doc.text(currency(previousBalance), 150, y + 35, { align: "right" });
-  doc.setFont("helvetica", "bold");
-  doc.text("FINAL TOTAL :", 110, y + 42, { align: "right" });
-  doc.text(currency(finalTotal), 150, y + 42, { align: "right" });
+  doc.text("PAID :", 110, y + 35, { align: "right" });
+  doc.text(currency(paidAmount), 150, y + 35, { align: "right" });
 
-  y += 63;
+  doc.setFontSize(parts.length > 1 ? 8.5 : 10);
+  doc.text(label, 110, y + 42, { align: "right" });
+  doc.setFontSize(10);
+  doc.text(currency(totalPreviousBalance), 150, y + 42, { align: "right" });
+
+  doc.setFont("helvetica", "bold");
+  doc.text("FINAL BALANCE :", 110, y + 49, { align: "right" });
+  doc.text(currency(finalBalance), 150, y + 49, { align: "right" });
+
+  y += 70;
   doc.setTextColor(...BRAND.primary);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(10);

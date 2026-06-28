@@ -196,7 +196,9 @@ const Buildings = () => {
             // .min(1, 'Tenant code length must be at least 1')
             .integer('Tenant code length must be a whole number'),
         amenities: Yup.array().of(Yup.string()),
-        isActive: Yup.boolean()
+        isActive: Yup.boolean(),
+        accountNumber: Yup.string()
+            .max(100, 'Account number must not exceed 100 characters')
     });
 
     // Formik for building form
@@ -205,6 +207,7 @@ const Buildings = () => {
         initialValues: {
             name: selectedBuilding?.name || '',
             code: selectedBuilding?.code || '',
+            accountNumber: selectedBuilding?.accountNumber || '',
             address: {
                 street: selectedBuilding?.address?.street || '',
                 city: selectedBuilding?.address?.city || '',
@@ -597,7 +600,7 @@ const Buildings = () => {
                                 </CardHeader>
                                 <CardBody>
                                     <Row className="g-3 align-items-end">
-                                        <Col md={6}>
+                                        <Col md={selectedBuilding ? 4 : 6}>
                                             <FormGroup className="mb-0">
                                                 <Label className="form-label">
                                                     Building Name <span className="text-danger">*</span>
@@ -615,7 +618,7 @@ const Buildings = () => {
                                             </FormGroup>
                                         </Col>
                                         {selectedBuilding ? (
-                                            <Col md={6}>
+                                            <Col md={4}>
                                                 <FormGroup className="mb-0">
                                                     <Label className="form-label">
                                                         Building Code
@@ -634,6 +637,23 @@ const Buildings = () => {
                                                 </FormGroup>
                                             </Col>
                                         ) : null}
+                                        <Col md={selectedBuilding ? 4 : 6}>
+                                            <FormGroup className="mb-0">
+                                                <Label className="form-label">
+                                                    ACC NO
+                                                </Label>
+                                                <Input
+                                                    name="accountNumber"
+                                                    value={formik.values.accountNumber}
+                                                    onChange={formik.handleChange}
+                                                    onBlur={formik.handleBlur}
+                                                    invalid={formik.touched.accountNumber && !!formik.errors.accountNumber}
+                                                    placeholder="e.g., 123456789"
+                                                    className="form-control-lg"
+                                                />
+                                                <FormFeedback>{formik.errors.accountNumber}</FormFeedback>
+                                            </FormGroup>
+                                        </Col>
                                         <Col md={12}>
                                             <FormGroup check className="mb-0 pt-1">
                                                 <Input
@@ -1092,6 +1112,12 @@ const Buildings = () => {
                                                         <i className="ri-user-settings-line me-2 text-muted"></i>
                                                         Tenant Code: {(building.tenantCodePrefix || 'N/A')} / length {building.tenantCodeLength || 'N/A'}
                                                     </p>
+                                                    {building.accountNumber && (
+                                                        <p className="mb-2">
+                                                            <i className="ri-bank-card-line me-2 text-muted"></i>
+                                                            ACC NO: {building.accountNumber}
+                                                        </p>
+                                                    )}
                                                 </Col>
                                             </Row>
                                             <Row className="mt-3">
